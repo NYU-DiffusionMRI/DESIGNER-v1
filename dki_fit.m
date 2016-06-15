@@ -66,12 +66,12 @@ function [b0, dt] = dki_fit(dwi, grad, mask, constraints)
     end
     dwi = vectorize(dwi, mask);
 
-    constraints = constraints > 0;
+   
     if exist('constraints', 'var') && ~isempty(constraints) && numel(constraints)==3
     else
         constraints = [0 1 0];
     end
-
+    constraints = constraints > 0;
     %% tensor fit
 
     ind = [ 1     1;  1     2;   1     3;   2     2;   2     3;  3     3];
