@@ -84,11 +84,14 @@ for i = 1:nvoxels
     DT = reshape(DT, [3 3]);
     [eigvec, eigval] = eigs(DT);
     eigval = diag(eigval);
-    eigvec = eigvec(:);
-    fe(:, i) = eigvec(1:3, :);
+    
     l1(i) = eigval(1,:);
     l2(i) = eigval(2,:);
     l3(i) = eigval(3,:);
+    
+    e1(:, i) = eigvec(:, 1); 
+    e2(:, i) = eigvec(:, 2); 
+    e3(:, i) = eigvec(:, 3);
 end
 md = (l1+l2+l3)/3;
 rd = (l2+l3)/2;
@@ -100,14 +103,14 @@ dirs = get256dirs();
 akc = AKC(dt, dirs);
 
 mk = mean(akc);
-ak = zeros([1, size(fe,2)]);
-rk = zeros([1, size(fe,2)]);
+ak = zeros([1, size(e1,2)]);
+rk = zeros([1, size(e1,2)]);
 
-for i = 1:nvoxels
-    dirs = [fe(:,i), -fe(:,i)]';
+parfor i = 1:nvoxels
+    dirs = [e1(:,i), -e1(:,i)]';
     akc = AKC(dt(:,i), dirs);
     ak(i) = mean(akc);
-    dirs = radialsampling(fe(:,i), 256)';
+    dirs = radialsampling(e1(:,i), 256)';
     akc = AKC(dt(:,i), dirs);
     rk(i) = mean(akc);
 end
@@ -122,7 +125,7 @@ maxk = zeros([1 nvxls]);
 N = 10000;
 nblocks = 10;
 for i=1:nblocks;
-    akc = DKI.akc(dt, dir((N/nblocks*(i-1))+1:N/nblocks*i, :)); %#ok<NODEF>
+    akc = AKC(dt, dir((N/nblocks*(i-1))+1:N/nblocks*i, :)); %#ok<NODEF>
     maxk = nanmax([maxk; akc], [], 1);
 end
 
@@ -130,32 +133,26 @@ clear dir
 awf = maxk./(maxk+3); awf(isinf(awf))=0;
 
 
-[eig, dir] = DKI.eig(dt);
-
-e1 = dir(1:3, :); e2 = dir(4:6, :); e3 = dir(7:9, :);
-d1 = eig(1, :); d2 = eig(2, :); d3 = eig(3, :);
-
-
-for i=1:size(dt, 2)
-    akc = DKI.akc(dt(:,i), [e1(:,i), e2(:,i), e3(:,i)]);
+for i=1:nvxls
+    akc = AKC(dt(:,i), [e1(:,i), e2(:,i), e3(:,i)]);
 
     if branch == 1
-        eas.de1(i) = d1(i) * (1 + sqrt((akc(1)*awf(i))/(3*(1-awf(i)))));
-        ias.da1(i) = d1(i) * (1 - sqrt((akc(1)*(1-awf(i)))./(3*awf(i))));
+        eas.de1(i) = l1(i) * (1 + sqrt((akc(1)*awf(i))/(3*(1-awf(i)))));
+        ias.da1(i) = l1(i) * (1 - sqrt((akc(1)*(1-awf(i)))./(3*awf(i))));
     else
-        eas.de1(i) = d1(i) * (1 - sqrt((akc(1)*awf(i))/(3*(1-awf(i)))));
-        ias.da1(i) = d1(i) * (1 + sqrt((akc(1)*(1-awf(i)))./(3*awf(i))));
+        eas.de1(i) = l1(i) * (1 - sqrt((akc(1)*awf(i))/(3*(1-awf(i)))));
+        ias.da1(i) = l1(i) * (1 + sqrt((akc(1)*(1-awf(i)))./(3*awf(i))));
     end
-    eas.de2(i) = d2(i) * (1 + sqrt((akc(2)*awf(i))/(3*(1-awf(i)))));
-    ias.da2(i) = d2(i) * (1 - sqrt((akc(2)*(1-awf(i)))./(3*awf(i))));
+    eas.de2(i) = l2(i) * (1 + sqrt((akc(2)*awf(i))/(3*(1-awf(i)))));
+    ias.da2(i) = l2(i) * (1 - sqrt((akc(2)*(1-awf(i)))./(3*awf(i))));
 
-    eas.de3(i) = d3(i) * (1 + sqrt((akc(3)*awf(i))/(3*(1-awf(i)))));
-    ias.da3(i) = d3(i) * (1 - sqrt((akc(3)*(1-awf(i)))./(3*awf(i))));
+    eas.de3(i) = l3(i) * (1 + sqrt((akc(3)*awf(i))/(3*(1-awf(i)))));
+    ias.da3(i) = l3(i) * (1 - sqrt((akc(3)*(1-awf(i)))./(3*awf(i))));
 
     eas.tort(i) = eas.de1(i)./(.5*(eas.de2(i) + eas.de3(i)));
-    eas.de_perp(i) = .5*(eas.de2(i) + eas.de3(i));
+    eas.de_perp(i) = (eas.de2(i) + eas.de3(i))/2;
 
-    ias.da_perp(i) = .5*(ias.da2(i) + ias.da3(i));
+    ias.da_perp(i) = (ias.da2(i) + ias.da3(i))/2;
 end
 
 
@@ -169,6 +166,7 @@ rd = vectorize(rd, mask);
 mk = vectorize(mk, mask);
 ak = vectorize(ak, mask);
 rk = vectorize(rk, mask);
+fe = vectorize(e1, mask);
 
 awf = vectorize(awf, mask);
 
