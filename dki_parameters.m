@@ -1,16 +1,15 @@
-function [fa, md, rd, ad, fe, mk,  rk, ak, awf, eas, ias] = dki_parameters(dt, mask, branch)
-    % diffusion and kurtosis tensor parameter calculation, including the white matter tract
-    % integrity metrics
+function [fa, md, rd, ad, fe, mk,  rk, ak] = dki_parameters(dt, mask)
+    % diffusion and kurtosis tensor parameter calculation
     %
     % -----------------------------------------------------------------------------------
-    % please cite: Fieremans, Els, Jens H. Jensen, and Joseph A. Helpern. 
-    %              White matter characterization with diffusional kurtosis imaging,
-    %              Neuroimage 58.1 (2011): 177-188.
+    % please cite: Veraart et al.  
+    %              More Accurate Estimation of Diffusion Tensor Parameters Using Diffusion Kurtosis Imaging,
+    %              MRM 65 (2011): 138-145.
     %------------------------------------------------------------------------------------
     % 
     % Usage:
     % ------
-    % [fa, md, ad, rd, fe, mk, ak, rk, awf, eas, ias] = dki_parameters(dt [, mask [, branch]])
+    % [fa, md, ad, rd, fe, mk, ak, rk] = dki_parameters(dt [, mask [, branch]])
     %
     % Required input: 
     % ---------------
@@ -37,9 +36,6 @@ function [fa, md, rd, ad, fe, mk,  rk, ak, awf, eas, ias] = dki_parameters(dt, m
     %  6. mk:                mean kurtosis
     %  7. rk:                radial kurtosis
     %  8. ak:                axial kurtosis
-    %  9. awf:               axonal water fraction
-    %  10. eas:              extra-axonal diffusivities, incl. tortuosity
-    %  11. ias:              intra-axonal diffusivities
     %
     % Important: The presence of outliers "black voxels" in the kurtosis maps 
     %            are we well-known, but inherent problem to DKI. Smoothing the 
@@ -60,7 +56,7 @@ function [fa, md, rd, ad, fe, mk,  rk, ak, awf, eas, ias] = dki_parameters(dt, m
     % For more details, contact: Jelle.Veraart@nyumc.org 
     
     
-[x, y, z, n] = size(dt);
+n = size(dt, 4);
 if ndims(dt)~=4
     error('size of dt needs to be [x, y, z, 21]')
 end
@@ -69,9 +65,6 @@ if n~=21
 end
 if ~exist('mask','var') || isempty(mask)     
         mask = ~isnan(dt(:,:,:,1));
-end
-if ~exist('branch','var') || isempty(branch)     
-        branch = 1;
 end
     
 dt = vectorize(dt, mask);
@@ -90,8 +83,6 @@ for i = 1:nvoxels
     l3(i) = eigval(3,:);
     
     e1(:, i) = eigvec(:, 1); 
-    e2(:, i) = eigvec(:, 2); 
-    e3(:, i) = eigvec(:, 3);
 end
 md = (l1+l2+l3)/3;
 rd = (l2+l3)/2;
@@ -115,45 +106,7 @@ parfor i = 1:nvoxels
     rk(i) = mean(akc);
 end
 
-%% WMTI paramerers
-% creation of 10000 directions, regularly distributed on half a sphere.
-load('dirs10000.mat', 'dir')
 
-% axonal water fraction
-nvxls = size(dt, 2);
-maxk = zeros([1 nvxls]);
-N = 10000;
-nblocks = 10;
-for i=1:nblocks;
-    akc = AKC(dt, dir((N/nblocks*(i-1))+1:N/nblocks*i, :)); %#ok<NODEF>
-    maxk = nanmax([maxk; akc], [], 1);
-end
-
-clear dir
-awf = maxk./(maxk+3); awf(isinf(awf))=0;
-
-
-for i=1:nvxls
-    akc = AKC(dt(:,i), [e1(:,i), e2(:,i), e3(:,i)]);
-
-    if branch == 1
-        eas.de1(i) = l1(i) * (1 + sqrt((akc(1)*awf(i))/(3*(1-awf(i)))));
-        ias.da1(i) = l1(i) * (1 - sqrt((akc(1)*(1-awf(i)))./(3*awf(i))));
-    else
-        eas.de1(i) = l1(i) * (1 - sqrt((akc(1)*awf(i))/(3*(1-awf(i)))));
-        ias.da1(i) = l1(i) * (1 + sqrt((akc(1)*(1-awf(i)))./(3*awf(i))));
-    end
-    eas.de2(i) = l2(i) * (1 + sqrt((akc(2)*awf(i))/(3*(1-awf(i)))));
-    ias.da2(i) = l2(i) * (1 - sqrt((akc(2)*(1-awf(i)))./(3*awf(i))));
-
-    eas.de3(i) = l3(i) * (1 + sqrt((akc(3)*awf(i))/(3*(1-awf(i)))));
-    ias.da3(i) = l3(i) * (1 - sqrt((akc(3)*(1-awf(i)))./(3*awf(i))));
-
-    eas.tort(i) = eas.de1(i)./(.5*(eas.de2(i) + eas.de3(i)));
-    eas.de_perp(i) = (eas.de2(i) + eas.de3(i))/2;
-
-    ias.da_perp(i) = (ias.da2(i) + ias.da3(i))/2;
-end
 
 
             
@@ -168,19 +121,6 @@ ak = vectorize(ak, mask);
 rk = vectorize(rk, mask);
 fe = vectorize(e1, mask);
 
-awf = vectorize(awf, mask);
-
-fields = fieldnames(ias);
-for i=1:numel(fields)
-    ias = setfield(ias, fields{i}, vectorize(getfield(ias, fields{i}), mask));  %#ok<*GFLD>
-end
-
-fields = fieldnames(eas);
-for i=1:numel(fields)
-    eas = setfield(eas, fields{i}, vectorize(getfield(eas, fields{i}), mask));  %#ok<*SFLD>
-end
-    
-    
 end
 
 function dirs = get256dirs()
