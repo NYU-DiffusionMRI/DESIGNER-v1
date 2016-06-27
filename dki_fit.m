@@ -1,4 +1,4 @@
-function [b0, dt] = dki_fit(dwi, grad, mask, constraints)
+function [b0, dt] = dki_fit(dwi, grad, mask, constraints, outliers)
     % Diffusion Kurtosis Imaging tensor estimation using 
     % (constrained) weighted linear least squares estimation 
     % -----------------------------------------------------------------------------------
@@ -64,8 +64,13 @@ function [b0, dt] = dki_fit(dwi, grad, mask, constraints)
     if ~exist('mask','var') || isempty(mask)
         mask = true(x, y, z);
     end
+    
+    if ~exist('outliers', 'var') || isempty(outliers)
+        outliers = false(size(dwi));
+    end
+    
     dwi = vectorize(dwi, mask);
-
+    outliers = vectorize(outliers, mask);
    
     if exist('constraints', 'var') && ~isempty(constraints) && numel(constraints)==3
     else
@@ -107,14 +112,21 @@ function [b0, dt] = dki_fit(dwi, grad, mask, constraints)
         d = zeros([1, size(C, 1)]);
         options = optimset('LargeScale', 'off', 'Display', 'off', 'MaxIter', 22000, 'TolCon', 1e-12, 'TolFun', 1e-12, 'TolX', 1e-12, 'MaxFunEvals', 220000);
         parfor i = 1:nvoxels
-            wi = diag(w(:,i));
-            dt(:, i) = lsqlin(wi*b,wi*log(dwi(:,i)),-C, d, [],[],[],[],[],options);
+            in_ = outliers(:, i) == 0;
+            wi = w(:,i); Wi = diag(wi(in_));             
+            dt(:, i) = lsqlin(Wi*b(in_, :),Wi*log(dwi(:,i)),-C, d, [],[],[],[],[],options);
         end
     else
         parfor i = 1:nvoxels
-            wi = diag(w(:,i));
-            logdwii = log(dwi(:,i));
-            dt(:,i) = (wi*b)\(wi*logdwii);
+            in_ = outliers(:, i) == 0;
+            b_ = b(in_, :);
+            if isempty(b_) || cond(b(in_, :))>1e5
+                dt(:, i) = NaN
+            else
+                wi = w(:,i); Wi = diag(wi(in_)); 
+                logdwii = log(dwi(:,i));
+                dt(:,i) = (Wi*b_)\(Wi*logdwii);
+            end
         end
     end
 
