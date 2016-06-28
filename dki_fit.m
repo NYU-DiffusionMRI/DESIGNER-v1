@@ -114,7 +114,7 @@ function [b0, dt] = dki_fit(dwi, grad, mask, constraints, outliers)
         parfor i = 1:nvoxels
             in_ = outliers(:, i) == 0;
             wi = w(:,i); Wi = diag(wi(in_));             
-            dt(:, i) = lsqlin(Wi*b(in_, :),Wi*log(dwi(:,i)),-C, d, [],[],[],[],[],options);
+            dt(:, i) = lsqlin(Wi*b(in_, :),Wi*log(dwi(in_,i)),-C, d, [],[],[],[],[],options);
         end
     else
         parfor i = 1:nvoxels
@@ -124,7 +124,7 @@ function [b0, dt] = dki_fit(dwi, grad, mask, constraints, outliers)
                 dt(:, i) = NaN
             else
                 wi = w(:,i); Wi = diag(wi(in_)); 
-                logdwii = log(dwi(:,i));
+                logdwii = log(dwi(in_,i));
                 dt(:,i) = (Wi*b_)\(Wi*logdwii);
             end
         end
