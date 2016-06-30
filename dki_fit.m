@@ -120,7 +120,7 @@ function [b0, dt] = dki_fit(dwi, grad, mask, constraints, outliers)
         parfor i = 1:nvoxels
             in_ = outliers(:, i) == 0;
             b_ = b(in_, :);
-            if isempty(b_) || cond(b(in_, :))>1e5
+            if isempty(b_) || cond(b(in_, :))>1e15
                 dt(:, i) = NaN
             else
                 wi = w(:,i); Wi = diag(wi(in_)); 
