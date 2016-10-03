@@ -76,6 +76,9 @@ for i = 1:nvoxels
     [eigvec, eigval] = eigs(DT);
     eigval = diag(eigval);
     
+    [eigval, idx] = sort(eigval, 'descend');
+    eigvec = eigvec(:, idx);
+    
     l1(i) = eigval(1,:);
     l2(i) = eigval(2,:);
     l3(i) = eigval(3,:);
