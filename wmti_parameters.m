@@ -22,9 +22,7 @@ function [awf, eas, ias] = wmti_parameters(dt, mask)
     %       calculation to a user-defined region-of-interest.
     %       default: mask = full FOV
     %
-    %    3. branch selection, 1 or 2 (default: 1)
-    %              1. De_parallel > Da_parallel
-    %              2. Da_parallel > De_parallel
+    %   
     % 
     % output:
     % -------
