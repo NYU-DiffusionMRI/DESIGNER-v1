@@ -2,7 +2,7 @@
 
 VERSION="0.0"
 
-PROGRAM_DEPENDENCIES=( 'dwidenoise' 'unring' 'flirt' 'N4BiasFieldCorrection' 'eddy' )
+PROGRAM_DEPENDENCIES=( 'dwidenoise' 'unring' 'flirt' 'eddy' 'matlab')
 for D in ${PROGRAM_DEPENDENCIES[@]};
   do
     if [[ ! -x $(which $D) ]];
