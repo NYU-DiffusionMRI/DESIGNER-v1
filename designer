@@ -44,13 +44,13 @@ Usage:
 
 Example:
 
-  bash $0 -n 2 -d DIFF_meso.nii DIFF_meso_research.nii -m SAG3dMPR.nii -o output_ -f SAG3DMPR.nii -k
+  bash $0 -n 2 -d DIFF_meso.nii DIFF_meso_research.nii -o designer_params -f SAG3DMPR.nii -k
 
 Required arguments: 
 
-     -n:  number of DWI series    	 Number of diffusion series that should be concatenated. If this number is 1, the program will expect one dwi image with extention .nii or .nii.gz and corresponding bvec/bvals with the same filename prefix and extensions of .bval and .bvec
-     -d:  diffusion data	         Basename of each diffusion series input to designer. Must have n arguemnts
-     -o:  Outpuit directory		 All outputs will be in directory specified here
+     -n:  number of DWI series    	   Number of diffusion series that should be concatenated. If this number is 1, the program will expect one dwi image with extention .nii or .nii.gz and corresponding bvec/bvals with the same filename prefix and extensions of .bval and .bvec
+     -d:  diffusion data	           Basename of each diffusion series input to designer. Must have n arguemnts
+     -o:  Outpuit directory		   All outputs will be in directory specified here
 
 Optional arguments:
 
