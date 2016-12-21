@@ -47,7 +47,7 @@ Example:
 
 Required arguments: 
 
-     -d:  diffusion data	           Basename of each diffusion series input to designer. Takes multiple arguemnts.
+     -d:  diffusion data	           Basename of each diffusion series input to designer in nifti format. Takes multiple arguemnts.
 					    the program will expect one dwi image with extention .nii or .nii.gz and corresponding 
                                             bvec/bvals with the same filename prefix and extensions of .bval and .bvec
      -o:  Outpuit directory		   All outputs will be in directory specified here
