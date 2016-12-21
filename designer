@@ -3,14 +3,13 @@
 VERSION="0.0"
 
 PROGRAM_DEPENDENCIES=( 'dwidenoise' 'unring' 'flirt' 'eddy' 'matlab')
-for D in ${PROGRAM_DEPENDENCIES[@]};
-  do
-    if [[ ! -x $(which $D) ]];
-      then
-        echo "Error: cannot find $D. Please install dependency or add it to your PATH"
-        exit
-      fi
-  done
+for D in ${PROGRAM_DEPENDENCIES[@]}; do
+  if [[ ! -x $(which $D) ]];
+    then
+      echo "Error: cannot find $D. Please install dependency or add it to your PATH"
+      exit
+    fi
+done
 
 function Usage {
     cat <<USAGE
@@ -204,28 +203,25 @@ fi
 ################################################################################
 N=${#DIFFUSION_IMAGES[@]}
 for d in $(seq 0 $(($N - 1))); do
-  if [[ ! -f ${DIFFUSION_IMAGES[$d]} ]];
-    then
-      echo "The specified image \"${DIFFUSION_IMAGES[$d]}\" does not exist."
-      exit 1
-    fi
-  done
+  if [[ ! -f ${DIFFUSION_IMAGES[$d]} ]]; then
+    echo "The specified image \"${DIFFUSION_IMAGES[$d]}\" does not exist."
+    exit 1
+  fi
+done
 
 ROOT_DIR=$(dirname "/${DIFFUSION_IMAGES}")
 OUTPUT_DIR=${CURRENT_DIR}${ROOT_DIR}/tmp$RANDOM/
 OUTPUT_PREFIX=${OUTPUT_DIR}/tmp
 OUTPUT_DIR=${OUTPUT_PREFIX%\/*}
 PARAM_PREFIX=${CURRENT_DIR}${ROOT_DIR}${PREFIX}
-if [[ ! -d $OUTPUT_DIR ]];
-  then
-    echo "The output directory \"$OUTPUT_DIR\" does not exist. Making it."
-    mkdir -p $OUTPUT_DIR
-  fi
-if [[ ! -d $PARAM_PREFIX ]];
-  then
-    echo "The output directory \"$PARAM_PREFIX\" does not exist. Making it."
-    mkdir -p $PARAM_PREFIX
-  fi
+if [[ ! -d $OUTPUT_DIR ]]; then
+  echo "The output directory \"$OUTPUT_DIR\" does not exist. Making it."
+  mkdir -p $OUTPUT_DIR
+fi
+if [[ ! -d $PARAM_PREFIX ]]; then
+  echo "The output directory \"$PARAM_PREFIX\" does not exist. Making it."
+  mkdir -p $PARAM_PREFIX
+fi
 
 # get series list and merge
 for b in ${DIFFUSION_IMAGES[@]}; do
