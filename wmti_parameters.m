@@ -109,43 +109,57 @@ cnt = [ 1     2     2     1     2     1 ];
 adc2dt = pinv((dir(:,ind(1:6,1)).*dir(:,ind(1:6,2))) * diag(cnt));
 
 for i=1:nvxls
-        [akc, adc] = AKC(dt(:, i), dir);
-        f = repmat(awf(i), [size(dir, 1), 1]);
+        try
+            [akc, adc] = AKC(dt(:, i), dir);
+            f = repmat(awf(i), [size(dir, 1), 1]);
 
-        De=adc.*(1+sqrt(akc.*f./(3*(1-f))));
-        Di=adc.*(1-sqrt(akc.*(1-f)./(3*f)));
+            De=adc.*(1+sqrt(akc.*f./(3*(1-f))));
+            Di=adc.*(1-sqrt(akc.*(1-f)./(3*f)));
 
-        dt_e = adc2dt*De; 
-        dt_i = adc2dt*Di; 
+            dt_e = adc2dt*De; 
+            dt_i = adc2dt*Di; 
 
-        % eigenvalue decomposition of De
-        DTe = dt_e([1:3 2 4 5 3 5 6]);
-        DTe = reshape(DTe, [3 3]);
-        [~, eigval] = eigs(DTe); 
-        eigval = sort(diag(eigval), 'descend');
+            % eigenvalue decomposition of De
+            DTe = dt_e([1:3 2 4 5 3 5 6]);
+            DTe = reshape(DTe, [3 3]);
+            [~, eigval] = eigs(DTe); 
+            eigval = sort(diag(eigval), 'descend');
 
-        eas.de1(i) = eigval(1,:);
-        eas.de2(i) = eigval(2,:);
-        eas.de3(i) = eigval(3,:);
+            eas.de1(i) = eigval(1,:);
+            eas.de2(i) = eigval(2,:);
+            eas.de3(i) = eigval(3,:);
 
-        eas.tort(i) = eas.de1(i)./(.5*(eas.de2(i) + eas.de3(i)));
-        eas.de_perp(i) = (eas.de2(i) + eas.de3(i))/2;
+            eas.tort(i) = eas.de1(i)./(.5*(eas.de2(i) + eas.de3(i)));
+            eas.de_perp(i) = (eas.de2(i) + eas.de3(i))/2;
 
 
 
-        % eigenvalue decomposition of Da
-        DTi = dt_i([1:3 2 4 5 3 5 6]);
-        DTi = reshape(DTi, [3 3]);
-        [~, eigval] = eigs(DTi); 
-        eigval = sort(diag(eigval), 'descend');
+            % eigenvalue decomposition of Da
+            DTi = dt_i([1:3 2 4 5 3 5 6]);
+            DTi = reshape(DTi, [3 3]);
+            [~, eigval] = eigs(DTi); 
+            eigval = sort(diag(eigval), 'descend');
 
-        ias.da1(i) = eigval(1,:);
-        ias.da2(i) = eigval(2,:);
-        ias.da3(i) = eigval(3,:);
+            ias.da1(i) = eigval(1,:);
+            ias.da2(i) = eigval(2,:);
+            ias.da3(i) = eigval(3,:);
 
-        ias.da_perp(i) = (ias.da2(i) + ias.da3(i))/2;
-        ias.Da(i) = sum(eigval(:)); 
+            ias.da_perp(i) = (ias.da2(i) + ias.da3(i))/2;
+            ias.Da(i) = sum(eigval(:)); 
+        catch
+            ias.da1(i) = 0;
+            ias.da2(i) = 0;
+            ias.da3(i) = 0;
+            ias.da_perp(i) = 0;
+            ias.Da(i) = 0;
+            
+            eas.de1(i) = 0;
+            eas.de2(i) = 0;
+            eas.de3(i) = 0;
+            eas.de_perp(i) = 0;
+            eas.tort(i) = 0;
 
+        end
 end
 
 

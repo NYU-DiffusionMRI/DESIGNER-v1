@@ -110,7 +110,7 @@ function [b0, dt] = dki_fit(dwi, grad, mask, constraints, outliers)
             C = [C; [zeros(60, 1), 3/max(bval)*(dir(:,ind(1:6,1)).*dir(:,ind(1:6,2)))*diag(cnt), -(prod(reshape(dir(:,W_ind),[],15,4),3))*diag(W_cnt)]];
         end
         d = zeros([1, size(C, 1)]);
-        options = optimset('LargeScale', 'off', 'Display', 'off', 'MaxIter', 22000, 'TolCon', 1e-12, 'TolFun', 1e-12, 'TolX', 1e-12, 'MaxFunEvals', 220000);
+        options = optimset('Display', 'off', 'Algorithm', 'active-set', 'MaxIter', 22000, 'TolCon', 1e-12, 'TolFun', 1e-12, 'TolX', 1e-12, 'MaxFunEvals', 220000);
         parfor i = 1:nvoxels
             in_ = outliers(:, i) == 0;
             wi = w(:,i); Wi = diag(wi(in_));             
