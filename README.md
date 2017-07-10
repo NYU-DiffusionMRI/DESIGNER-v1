@@ -12,3 +12,23 @@ Some important notes needs to be considered:
 3. Outliers, or “black voxels”, in kurtosis maps are not uncommon. They result from undesired signal fluctuations due to motion, Gibbs ringing, or noise, which can often only be reduced using sophisticated tools.  Unfortunately, those outliers will interfere with the visual and statistical inspection of the kurtosis parameters maps. Smoothing is typically used to suppress those outliers. Use of smoothing must be done with care as image blur partial voluming effects might be introduced. 
 
 
+DESIGNER.py is a python script that performs complete diffusion weighted image processing. It uses libraries from FSL (https://fsl.fmrib.ox.ac.uk/fsl/fslwiki), mrtrix3 (http://www.mrtrix.org/), and MATLAB to perform DWI denoising, Gibbs artifact correction, Rician bias correction, EPI distortion correction, Eddy current correction, motion correction, B1 bias field correction, outlier rejection, and Tensor fitting. This script will run on either Linux or Mac OS X as long as the shell environement is set up correctly. 
+Users interested in running DESIGNER should follow the following steps:
+1.  download DESIGNER.py as well as the supporting MATLAB functions above. We also rely on Matlab tools for Nifti and Analyze Images (https://www.mathworks.com/matlabcentral/fileexchange/8797-tools-for-nifti-and-analyze-image)
+2.  Set up the python engine for matlab: 
+cd "matlabroot/extern/engines/python"
+python setup.py install
+3.  Make sure that mrtrix3 and fsl binaries are correctly sourced in your shell environment PATH viarable:
+MRTRIXDIR=<path/to/mrtrix3>
+FSLDIR=<path/to/fsl>
+. ${FSLDIR}/etc/fslconf/fsl.sh
+PATH=${FSLDIR}/bin:${PATH}
+PATH=${MRTRIXDIR}/bin:${PATH}
+export FSLDIR PATH
+4.  Gibbs correction is currently implemented using "unring" (https://bitbucket.org/reisert/unring). This function must be downloaded and compiled using either the matlab mex-file or using fsl-source libraries, the location of the unring executable you want to use (either matlab or fsl) should also be added to the environment PATH variable:
+UNRING=<path/to/unring>
+depending on whether you compile unring using matlab or fsl, do:
+PATH=${UNRING}/matlab:${PATH}
+or
+PATH=${UNRING}/fsl:${PATH}
+
