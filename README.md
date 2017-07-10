@@ -17,33 +17,33 @@ Users interested in running DESIGNER should follow the following steps:
 1.  download DESIGNER.py as well as the supporting MATLAB functions above. We also rely on Matlab tools for Nifti and Analyze Images (https://www.mathworks.com/matlabcentral/fileexchange/8797-tools-for-nifti-and-analyze-image)
 2.  Set up the python engine for matlab: 
 
-cd "matlabroot/extern/engines/python"
+    cd "matlabroot/extern/engines/python"
 
-python setup.py install
+    python setup.py install
 
 3.  Make sure that mrtrix3 and fsl binaries are correctly sourced in your shell environment PATH viarable:
 
-MRTRIXDIR=<path/to/mrtrix3>
+    MRTRIXDIR=<path/to/mrtrix3>
 
-FSLDIR=<path/to/fsl>
+    FSLDIR=<path/to/fsl>
 
-. ${FSLDIR}/etc/fslconf/fsl.sh
+    . ${FSLDIR}/etc/fslconf/fsl.sh
 
-PATH=${FSLDIR}/bin:${PATH}
+    PATH=${FSLDIR}/bin:${PATH}
 
-PATH=${MRTRIXDIR}/bin:${PATH}
+    PATH=${MRTRIXDIR}/bin:${PATH}
 
-export FSLDIR PATH
+    export FSLDIR PATH
 
 4.  Gibbs correction is currently implemented using "unring" (https://bitbucket.org/reisert/unring). This function must be downloaded and compiled using either the matlab mex-file or using fsl-source libraries, the location of the unring executable you want to use (either matlab or fsl) should also be added to the environment PATH variable:
 
-UNRING=<path/to/unring>
+    UNRING=<path/to/unring>
 
-depending on whether you compile unring using matlab or fsl, do:
+    depending on whether you compile unring using matlab or fsl, do:
 
-PATH=${UNRING}/matlab:${PATH}
+    PATH=${UNRING}/matlab:${PATH}
 
-or
+    or
 
-PATH=${UNRING}/fsl:${PATH}
+    PATH=${UNRING}/fsl:${PATH}
 
