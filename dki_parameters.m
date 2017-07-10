@@ -44,7 +44,7 @@ function [fa, md, rd, ad, fe, mk,  rk, ak] = dki_parameters(dt, mask)
     %            and statistical interpretation. However, smoothing comes
     %            with the cost of partial voluming. 
     %       
-    % Copyright (c) 2016 New York University and University of Antwerp
+    % Copyright (c) 2017 New York University and University of Antwerp
     % 
     % This Source Code Form is subject to the terms of the Mozilla Public
     % License, v. 2.0. If a copy of the MPL was not distributed with this file,
@@ -385,22 +385,32 @@ end
 
 function [akc, adc] = AKC(dt, dir)
 
-W_ind = [1 1 1 1; 1 1 1 2; 1 1 1 3; 1 1 2 2; 1 1 2 3;
-    1 1 3 3; 1 2 2 2; 1 2 2 3; 1 2 3 3; 1 3 3 3;
-    2 2 2 2; 2 2 2 3; 2 2 3 3; 2 3 3 3; 3 3 3 3];
-W_cnt = [1 4 4 6 12 6 4 12 12 4 1 4 6 4 1];
+[W_ind, W_cnt] = createTensorOrder(4);
 
 adc = ADC(dt(1:6, :), dir);
 md = sum(dt([1 4 6],:),1)/3;
-T = (prod(reshape(dir(:,W_ind),[],15,4),3))*diag(W_cnt);
+
+ndir  = size(dir, 1);
+T =  W_cnt(ones(ndir, 1), :).*dir(:,W_ind(:, 1)).*dir(:,W_ind(:, 2)).*dir(:,W_ind(:, 3)).*dir(:,W_ind(:, 4));
+ 
 akc =  T*dt(7:21, :);
 akc = (akc .* repmat(md.^2, [size(adc, 1), 1]))./(adc.^2);
 end
 
 function [adc] = ADC(dt, dir)
-ind = [ 1     1;  1     2;   1     3;   2     2;   2     3;  3     3];
-cnt = [ 1     2     2     1     2     1 ];
-adc = (dir(:,ind(1:6,1)).*dir(:,ind(1:6,2))) * diag(cnt) * dt;
+[D_ind, D_cnt] = createTensorOrder(2);
+ndir  = size(dir, 1);
+T =  D_cnt(ones(ndir, 1), :).*dir(:,D_ind(:, 1)).*dir(:,D_ind(:, 2));
+adc = T * dt;
+end
+
+function [X, cnt] = createTensorOrder(order)
+    X = nchoosek(kron([1, 2, 3], ones(1, order)), order);
+    X = unique(X, 'rows');
+    for i = 1:size(X, 1)
+        cnt(i) = factorial(order) / factorial(nnz(X(i, :) ==1))/ factorial(nnz(X(i, :) ==2))/ factorial(nnz(X(i, :) ==3));
+    end
+
 end
 
 function dirs = radialsampling(dir, n)
