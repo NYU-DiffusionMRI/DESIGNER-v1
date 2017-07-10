@@ -1,5 +1,5 @@
 function tensorfitting(root,outdir,detectoutliers,dti,dki,wmti,fitconstraints)
-addpath(genpath(pwd));
+addpath(genpath(pwd)); addpath(genpath('..'));
 
 nii = load_untouch_nii(fullfile(root,'brainmask.nii')); mask = logical(nii.img);
 nii = load_untouch_nii(fullfile(root,'dwi_designer.nii')); dwi = double(nii.img);
