@@ -1,5 +1,5 @@
-function rungibbscorrection(gibbsdir,root)
-addpath(genpath(pwd)); addpath(genpath('..'));
+function rungibbscorrection(gibbsdir,root,DKIroot)
+addpath(genpath(DKIroot));
 addpath(gibbsdir);
 
 nii = load_untouch_nii(fullfile(root,'dwidn.nii')); dwi = double(nii.img);
