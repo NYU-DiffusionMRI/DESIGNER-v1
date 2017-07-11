@@ -4,7 +4,7 @@
 import matlab.engine
 import os
 PATH = os.environ['PATH'].split(":")
-mrtrixbin = [s for s in PATH if "mrtrix3" in s]
+mrtrixbin = [s for s in PATH if "mrtrix3/bin" in s]
 if not mrtrixbin:
     print("cannot find path to mrtrix3, please make sure <path/to/mrtrix3/bin> is in your PATH")
     quit()
