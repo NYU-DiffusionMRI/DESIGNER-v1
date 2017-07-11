@@ -63,6 +63,7 @@ def splitext_(path):
     return os.path.splitext(path)
 
 designer_root = os.path.dirname(os.path.realpath(__file__))
+DKI_root = os.path.abspath(os.path.join(designer_root,'..'))
 
 app.makeTempDir()
 
@@ -139,7 +140,7 @@ if app.args.degibbs:
     if app.args.degibbs == 'matlab':
         os.chdir(designer_root)
         eng = matlab.engine.start_matlab()
-        eng.rungibbscorrection(unringbin,path.toTemp('',True),nargout=0)
+        eng.rungibbscorrection(unringbin,path.toTemp('',True),DKI_root,nargout=0)
         eng.quit()
         app.gotoTempDir()
         run.command('mrconvert -grad grad.txt dwigc.nii dwigc.mif')
@@ -271,7 +272,7 @@ if not app.args.processing_only:
         constraints=app.args.fit_constraints
     else:
         constraints=0
-    eng.tensorfitting(path.toTemp('',True),path.fromUser(app.args.output, True),outliers,DTI,DKI,WMTI,constraints,nargout=0)
+    eng.tensorfitting(path.toTemp('',True),path.fromUser(app.args.output, True),outliers,DTI,DKI,WMTI,constraints,DKI_root,nargout=0)
     eng.quit()
     app.gotoTempDir()
 
