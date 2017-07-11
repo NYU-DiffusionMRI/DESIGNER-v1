@@ -36,7 +36,7 @@ options = app.cmdline.add_argument_group('Other options for the DESIGNER script'
 options.add_argument('-denoise', action='store_true', help='Perform dwidenoise')
 options.add_argument('-extent', help='Denoising extent. Default is 5,5,5')
 #options.add_argument('-degibbs', action='store_true', help='Perform Gibbs artifact correction')
-options.add_argument('-degibbs', help='Perform Gibbs artifact correction. Input options are fsl or matlab, depending pn which unringing executable is in your PATH')
+options.add_argument('-degibbs', help='Perform Gibbs artifact correction. Input options are "fsl" or "matlab", depending pn which unringing executable is in your PATH')
 options.add_argument('-rician', action='store_true', help='Perform Rician bias correction')
 options.add_argument('-prealign', action='store_true', help='If there are multiple input diffusion series, do rigid alignment prior to eddy to maximize motion correction performance')
 options.add_argument('-eddy', action='store_true', help='run fsl eddy (note that if you choose this command you must also choose a phase encoding option')
