@@ -134,7 +134,7 @@ if app.args.degibbs:
         print("cannot find path to unring, please make sure <path/to/unring> or <path/to/unring.m> is in your PATH")
         quit()
     unringbin = "".join(unringbin)
-    print(unringbin)
+    
     run.command('mrconvert -export_grad_mrtrix grad.txt dwidn.mif dwidn.nii')
 
     if app.args.degibbs == 'matlab':
