@@ -185,7 +185,7 @@ else: shutil.copyfile('dwirc.mif','dwitf.mif')
 # if number of input volumes is greater than 1, make a new acqp and index file.
 if app.args.eddy:
 	if app.args.rpe_none:
-		run.command('dwipreproc -eddy_options " --repol" -rpe_none dwitf.mif dwiec.mif')
+		run.command('dwipreproc -eddy_options " --repol" -rpe_none -pe_dir ' + app.args.pe_dir + ' dwitf.mif dwiec.mif')
 	elif app.args.rpe_pair:
 		run.command('dwiextract -bzero dwi.mif - | mrconvert -coord 3 0 - b0pe.mif')
 		rpe_size = [ int(s) for s in image.headerField(path.fromUser(app.args.rpe_pair,True), 'size').split() ]
