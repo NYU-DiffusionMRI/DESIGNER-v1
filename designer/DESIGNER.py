@@ -125,7 +125,7 @@ else: extent = '5,5,5'
 # denoising
 if app.args.denoise:
 	run.command('dwidenoise -extent ' + extent + ' -noise fullnoisemap.mif dwi.mif dwidn.mif')
-else: shutil.copyfile('dwi.mif','dwidn.mif')
+else: run.function(shutil.move,'dwi.mif','dwidn.mif')
 
 # gibbs artifact correction
 if app.args.degibbs:
@@ -144,25 +144,24 @@ if app.args.degibbs:
         eng.quit()
         app.gotoTempDir()
         run.command('mrconvert -grad grad.txt dwigc.nii dwigc.mif')
-        os.remove('dwigc.nii')
+        file.delTempFile('dwigc.nii')
     if app.args.degibbs == 'fsl':
         run.command('unring dwidn.nii dwigc' + fsl_suffix + ' -minW 1 -maxW 3 -nsh 20')
         run.command('mrconvert -grad grad.txt dwigc' + fsl_suffix + ' dwigc.mif')
-        os.remove('dwigc' + fsl_suffix)
+        file.delTempFile('dwigc' + fsl_suffix)
     os.remove('dwidn.nii')
-else: shutil.copyfile('dwidn.mif','dwigc.mif')
+else: run.function(shutil.move,'dwidn.mif','dwigc.mif')
 
 # rician bias correction
 if app.args.rician:
-	bvalu = np.unique(np.around(bval, decimals=-1))
-	lowbval = [ i for i in bvalu if i<=2000]
-	lowbvalstr = ','.join(str(i) for i in lowbval)
-
-	run.command('dwiextract -shell ' + lowbvalstr + ' dwi.mif dwilowb.mif')
-	run.command('dwidenoise -extent ' + extent + ' -noise lowbnoisemap.mif dwilowb.mif tmp.mif')
-	os.remove('tmp.mif')
-	run.command('mrcalc dwigc.mif 2 -pow lowbnoisemap.mif 2 -pow -sub -abs -sqrt - | mrcalc - -finite - 0 -if dwirc.mif')
-else: shutil.copyfile('dwigc.mif','dwirc.mif')
+    bvalu = np.unique(np.around(bval, decimals=-1))
+    lowbval = [ i for i in bvalu if i<=2000]
+    lowbvalstr = ','.join(str(i) for i in lowbval)
+    run.command('dwiextract -shell ' + lowbvalstr + ' dwi.mif dwilowb.mif')
+    run.command('dwidenoise -extent ' + extent + ' -noise lowbnoisemap.mif dwilowb.mif tmp.mif')
+    file.delTempFile('tmp.mif')
+    run.command('mrcalc dwigc.mif 2 -pow lowbnoisemap.mif 2 -pow -sub -abs -sqrt - | mrcalc - -finite - 0 -if dwirc.mif')
+else: run.function(shutil.move,'dwigc.mif','dwirc.mif')
 
 # pre-eddy alignment for multiple input series
 if app.args.prealign:
@@ -179,7 +178,7 @@ if app.args.prealign:
 				miflist.append('dwitf' + str(idx) + '.mif')
 		DWImif = ' '.join(miflist)
 		run.command('mrcat -axis 3 dwirc0.mif ' + DWImif + ' dwitf.mif')
-else: shutil.copyfile('dwirc.mif','dwitf.mif')
+else: run.function(shutil.move,'dwirc.mif','dwitf.mif')
 
 # epi + eddy current and motion correction
 # if number of input volumes is greater than 1, make a new acqp and index file.
@@ -202,7 +201,7 @@ if app.args.eddy:
         os.remove('tmp.mif')
     elif app.args.rpe_header:
         run.command('dwipreproc -eddy_options " --repol" -rpe_header dwipe_rpe.mif dwiec.mif')
-else: shutil.copyfile('dwitf.mif','dwiec.mif')
+else: run.function(shutil.move,'dwitf.mif','dwiec.mif')
 
 # b1 bias field correction
 if app.args.b1correct:
@@ -217,19 +216,17 @@ if app.args.b1correct:
             miflist.append('dwibc' + str(idx) + '.mif')
             DWImif = ' '.join(miflist)
         run.command('mrcat -axis 3 ' + DWImif + ' dwibc.mif')
-else: shutil.copyfile('dwiec.mif','dwibc.mif')
+else: run.function(shutil.move,'dwiec.mif','dwibc.mif')
 
 # generate a final brainmask
 run.command('dwiextract -bzero dwibc.mif - | mrconvert -coord 3 0 - b0bc.nii')
-#run.command('dwi2mask dwibc.mif brain_mask.nii')
-#run.command('fslmaths b0bc.nii -mas brain_mask.nii brain')
+# run.command('dwi2mask dwibc.mif - | maskfilter - dilate brain_mask.nii')
+# run.command('fslmaths b0bc.nii -mas brain_mask.nii brain')
 run.command('bet b0bc.nii brain' + fsl_suffix + ' -R -m -f 0.25')
-part = fsl_suffix.split('.')
-isgz = part[-1] == 'gz'
-if isgz:
+if os.path.isfile('brain_mask.nii.gz'):
     with gzip.open('brain_mask' + fsl_suffix, 'rb') as f_in, open('brain_mask.nii', 'wb') as f_out:
         shutil.copyfileobj(f_in, f_out)
-    os.remove('brain_mask' + fsl_suffix)
+    file.delTempFile('brain_mask' + fsl_suffix)
 
 # smoothing (excluding CSF)
 if app.args.smooth:
