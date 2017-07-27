@@ -10,7 +10,7 @@ if not mrtrixbin:
     quit()
 mrtrixlib = "".join(mrtrixbin)[:-3]+'lib'
 
-import inspect, sys, numpy as np, shutil, math
+import inspect, sys, numpy as np, shutil, math, gzip
 from distutils.spawn import find_executable
 sys.path.insert(0, mrtrixlib)
 from mrtrix3 import app, file, fsl, image, path, phaseEncoding, run
@@ -51,7 +51,7 @@ options.add_argument('-outliers',action='store_true',help='Perform IRWLLS outlie
 rpe_options = app.cmdline.add_argument_group('Options for specifying the acquisition phase-encoding design')
 rpe_options.add_argument('-rpe_none', action='store_true', help='Specify that no reversed phase-encoding image data is being provided; eddy will perform eddy current and motion correction only')
 rpe_options.add_argument('-rpe_pair', help='Specify the reverse phase encoding image')
-rpe_options.add_argument('-rpe_all', help='Specify that ALL DWIs have been acquired with opposing phase-encoding; this information will be used to perform a recombination of image volumes (each pair of volumes with the same b-vector but different phase encoding directions will be combined together into a single volume). It is assumed that the SECOND HALF of the volumes in the input DWIs have corresponding diffusion sensitisation directions to the FIRST HALF, but were acquired using precisely the opposite phase-encoding direction')
+rpe_options.add_argument('-rpe_all', help='Specify that ALL DWIs have been acquired with opposing phase-encoding; this information will be used to perform a recombination of image volumes (each pair of volumes with the same b-vector but different phase encoding directions will be combined together into a single volume). The argument to this option is the set of volumes with reverse phase encoding but the same b-vectors as the input image')
 rpe_options.add_argument('-rpe_header', action='store_true', help='Specify that the phase-encoding information can be found in the image header(s), and that this is the information that the script should use')
 rpe_options.add_argument('-pe_dir', help='Manually specify the phase encoding direction of the input series')
 app.parse()
@@ -106,11 +106,11 @@ bval = [i[3] for i in grad]
 
 nvols = [i[3] for i in dwi_ind_size]
 for idx,i in enumerate(DWInlist):
-	if len(DWInlist) == 1:
-		tmpidxlist = range(0,num_volumes)
-	else:
-		tmpidxlist = range(nvols[idx],nvols[idx]+nvols[idx+1])
-	idxlist.append(','.join(str(i) for i in tmpidxlist))
+    if len(DWInlist) == 1:
+        tmpidxlist = range(0,num_volumes)
+    else:
+        tmpidxlist = range(sum(nvols[:idx+1]),sum(nvols[:idx+1])+nvols[idx+1])
+    idxlist.append(','.join(str(i) for i in tmpidxlist))
 
 # Perform initial checks on input images
 if not grad:
@@ -154,7 +154,7 @@ else: shutil.copyfile('dwidn.mif','dwigc.mif')
 
 # rician bias correction
 if app.args.rician:
-	bvalu = np.unique(bval)
+	bvalu = np.unique(np.around(bval, decimals=-1))
 	lowbval = [ i for i in bvalu if i<=2000]
 	lowbvalstr = ','.join(str(i) for i in lowbval)
 
@@ -184,49 +184,62 @@ else: shutil.copyfile('dwirc.mif','dwitf.mif')
 # epi + eddy current and motion correction
 # if number of input volumes is greater than 1, make a new acqp and index file.
 if app.args.eddy:
-	if app.args.rpe_none:
-		run.command('dwipreproc -eddy_options " --repol" -rpe_none -pe_dir ' + app.args.pe_dir + ' dwitf.mif dwiec.mif')
-	elif app.args.rpe_pair:
-		run.command('dwiextract -bzero dwi.mif - | mrconvert -coord 3 0 - b0pe.mif')
-		rpe_size = [ int(s) for s in image.headerField(path.fromUser(app.args.rpe_pair,True), 'size').split() ]
-		if len(rpe_size) == 4:
-			run.command('mrconvert -coord 3 0 ' + path.fromUser(app.args.rpe_pair,True) + ' b0rpe.mif')
-		else: run.command('mrconvert ' + path.fromUser(app.args.rpe_pair,True) + ' b0rpe.mif')
-		run.command('mrcat -axis 3 b0pe.mif b0rpe.mif rpepair.mif')
-		run.command('dwipreproc -eddy_options " --repol" -rpe_pair -se_epi rpepair.mif -pe_dir ' + app.args.pe_dir + ' dwitf.mif dwiec.mif')
-	elif app.args.rpe_all:
-		rpeimg = app.args.rpe_all
-		run.command('mrcat -axis 3 dwitf.mif ' + path.fromUser(app.args.rpe_all) + ' dwipe_rpe.mif')
-		run.command('dwipreproc -eddy_options " --repol" -rpe_all -pe_dir ' + app.args.pe_dir + ' dwipe_rpe.mif dwiec.mif')
-	elif app.args.rpe_header:
-			run.command('dwipreproc -eddy_options " --repol" -rpe_header dwipe_rpe.mif dwiec.mif')
+    if app.args.rpe_none:
+        run.command('dwipreproc -eddy_options " --repol" -rpe_none -pe_dir ' + app.args.pe_dir + ' dwitf.mif dwiec.mif')
+    elif app.args.rpe_pair:
+        run.command('dwiextract -bzero dwi.mif - | mrconvert -coord 3 0 - b0pe.mif')
+        rpe_size = [ int(s) for s in image.headerField(path.fromUser(app.args.rpe_pair,True), 'size').split() ]
+        if len(rpe_size) == 4:
+            run.command('mrconvert -coord 3 0 ' + path.fromUser(app.args.rpe_pair,True) + ' b0rpe.mif')
+        else: run.command('mrconvert ' + path.fromUser(app.args.rpe_pair,True) + ' b0rpe.mif')
+        run.command('mrcat -axis 3 b0pe.mif b0rpe.mif rpepair.mif')
+        run.command('dwipreproc -eddy_options " --repol" -rpe_pair -se_epi rpepair.mif -pe_dir ' + app.args.pe_dir + ' dwitf.mif dwiec.mif')
+    elif app.args.rpe_all:
+        run.command('mrconvert -export_grad_mrtrix grad.txt dwi.mif tmp.mif')
+        run.command('mrconvert -grad grad.txt ' + path.fromUser(app.args.rpe_all,True) + ' dwirpe.mif')
+        run.command('mrcat -axis 3 dwitf.mif dwirpe.mif dwipe_rpe.mif')
+        run.command('dwipreproc -eddy_options " --repol" -rpe_all -pe_dir ' + app.args.pe_dir + ' dwipe_rpe.mif dwiec.mif')
+        os.remove('tmp.mif')
+    elif app.args.rpe_header:
+        run.command('dwipreproc -eddy_options " --repol" -rpe_header dwipe_rpe.mif dwiec.mif')
 else: shutil.copyfile('dwitf.mif','dwiec.mif')
 
 # b1 bias field correction
 if app.args.b1correct:
-	if len(DWInlist) == 1:
-		run.command('dwibiascorrect -fsl dwiec.mif dwibc.mif')
-	else:
-		# note that b1 correction may still need to be done individually for each diffusion series ...
-		miflist = []
-		for idx,i in enumerate(DWInlist):
-			run.command('mrconvert -coord 3 ' + idxlist[idx] + ' dwiec.mif dwiec' + str(idx) + '.mif')
-			run.command('dwibiascorrect -fsl dwiec' + str(idx) + '.mif dwibc' + str(idx) + '.mif')
-			miflist.append('dwibc' + str(idx) + '.mif')
-		DWImif = ' '.join(miflist)
-		run.command('mrcat -axis 3 ' + DWImif + ' dwibc.mif')
+    if len(DWInlist) == 1:
+        run.command('dwibiascorrect -fsl dwiec.mif dwibc.mif')
+    else:
+        # note that b1 correction may still need to be done individually for each diffusion series ...
+        miflist = []
+        for idx,i in enumerate(DWInlist):
+            run.command('mrconvert -coord 3 ' + idxlist[idx] + ' dwiec.mif dwiec' + str(idx) + '.mif')
+            run.command('dwibiascorrect -fsl dwiec' + str(idx) + '.mif dwibc' + str(idx) + '.mif')
+            miflist.append('dwibc' + str(idx) + '.mif')
+            DWImif = ' '.join(miflist)
+        run.command('mrcat -axis 3 ' + DWImif + ' dwibc.mif')
 else: shutil.copyfile('dwiec.mif','dwibc.mif')
 
 # generate a final brainmask
-run.command('dwi2mask dwibc.mif brainmask.nii')
+run.command('dwiextract -bzero dwibc.mif - | mrconvert -coord 3 0 - b0bc.nii')
+#run.command('dwi2mask dwibc.mif brain_mask.nii')
+#run.command('fslmaths b0bc.nii -mas brain_mask.nii brain')
+run.command('bet b0bc.nii brain' + fsl_suffix + ' -R -m -f 0.25')
+part = fsl_suffix.split('.')
+isgz = part[-1] == 'gz'
+if isgz:
+    with gzip.open('brain_mask' + fsl_suffix, 'rb') as f_in, open('brain_mask.nii', 'wb') as f_out:
+        shutil.copyfileobj(f_in, f_out)
+    os.remove('brain_mask' + fsl_suffix)
 
 # smoothing (excluding CSF)
 if app.args.smooth:
     run.command('mrconvert -export_grad_fsl dwi_designer.bvec dwi_designer.bval dwibc.mif dwibc.nii')
-    run.command('dwiextract -bzero dwibc.mif - | mrconvert -coord 3 0 - b0bc.nii')
-    run.command('fslmaths b0bc.nii -mas brainmask.nii b0brain' + fsl_suffix)
-    run.command('fast -n 4 -t 2 -o tissue b0brain' + fsl_suffix)
-    run.command('fslmaths tissue_pve_0' + fsl_suffix + ' -thr 0.7 -bin CSFmask' + fsl_suffix)
+    run.command('fast -n 4 -t 2 -o tissue brain' + fsl_suffix)
+    csfclass = []
+    for i in range(4):
+        csfclass.append(float(image.statistic('brain' + fsl_suffix,'mean','tissue_pve_' + str(i) + fsl_suffix).split('/n')[-1]))
+    csfind = np.argmax(csfclass)
+    run.command('fslmaths tissue_pve_' + str(csfind) + fsl_suffix + ' -thr 0.7 -bin CSFmask' + fsl_suffix)
     run.command('mrconvert CSFmask' + fsl_suffix + ' CSFmask.nii')
     os.chdir(designer_root)
     eng = matlab.engine.start_matlab()
