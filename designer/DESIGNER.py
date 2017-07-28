@@ -30,6 +30,17 @@ app.cmdline.addDescription("""1. pre-check: concatenate all dwi series and make 
  						10. irwlls outlier map, cwlls dki fit
  						11. outlier detection and removal
  	""")
+app.cmdline.addCitation('','Veraart, J.; Novikov, D.S.; Christiaens, D.; Ades-aron, B.; Sijbers, J. & Fieremans, E. Denoising of diffusion MRI using random matrix theory. NeuroImage, 2016, 142, 394-406, doi: 10.1016/j.neuroimage.2016.08.016',True)
+app.cmdline.addCitation('','Veraart, J.; Fieremans, E. & Novikov, D.S. Diffusion MRI noise mapping using random matrix theory. Magn. Res. Med., 2016, 76(5), 1582-1593, doi:10.1002/mrm.26059',True)
+app.cmdline.addCitation('','Kellner, E., et al., Gibbs-Ringing Artifact Removal Based on Local Subvoxel-Shifts. Magnetic Resonance in Medicine, 2016. 76(5): p. 1574-1581.',True)
+app.cmdline.addCitation('','Koay, C.G. and P.J. Basser, Analytically exact correction scheme for signal extraction from noisy magnitude MR signals. Journal of Magnetic Resonance, 2006. 179(2): p. 317-322.',True)
+app.cmdline.addCitation('', 'Andersson, J. L. & Sotiropoulos, S. N. An integrated approach to correction for off-resonance effects and subject movement in diffusion MR imaging. NeuroImage, 2015, 125, 1063-1078', True)
+app.cmdline.addCitation('', 'Smith, S. M.; Jenkinson, M.; Woolrich, M. W.; Beckmann, C. F.; Behrens, T. E.; Johansen-Berg, H.; Bannister, P. R.; De Luca, M.; Drobnjak, I.; Flitney, D. E.; Niazy, R. K.; Saunders, J.; Vickers, J.; Zhang, Y.; De Stefano, N.; Brady, J. M. & Matthews, P. M. Advances in functional and structural MR image analysis and implementation as FSL. NeuroImage, 2004, 23, S208-S219', True)
+app.cmdline.addCitation('', 'Skare, S. & Bammer, R. Jacobian weighting of distortion corrected EPI data. Proceedings of the International Society for Magnetic Resonance in Medicine, 2010, 5063', True)
+app.cmdline.addCitation('', 'Andersson, J. L.; Skare, S. & Ashburner, J. How to correct susceptibility distortions in spin-echo echo-planar images: application to diffusion tensor imaging. NeuroImage, 2003, 20, 870-888', True)
+app.cmdline.addCitation('','Zhang, Y.; Brady, M. & Smith, S. Segmentation of brain MR images through a hidden Markov random field model and the expectation-maximization algorithm. IEEE Transactions on Medical Imaging, 2001, 20, 45-57',True)
+app.cmdline.addCitation('', 'Smith, S. M.; Jenkinson, M.; Woolrich, M. W.; Beckmann, C. F.; Behrens, T. E.; Johansen-Berg, H.; Bannister P. R.; De Luca, M.; Drobnjak, I.; Flitney, D. E.; Niazy, R. K.; Saunders, J.; Vickers, J.; Zhang, Y.; DeStefano, N.; Brady, J. M. & Matthews, P. M. Advances in functional and structural MR image analysis and implementation as FSL. NeuroImage, 2004,23, S208-S219',True)
+app.cmdline.addCitation('','Collier, Q., et al., Iterative reweighted linear least squares for accurate, fast, and robust estimation of diffusion magnetic resonance parameters. Magn Reson Med, 2015. 73(6): p. 2174-84.',True)
 app.cmdline.add_argument('input',  help='The input DWI series. For multiple input series, separate file names with commas (i.e. dwi1.nii,dwi2.nii,...)')
 app.cmdline.add_argument('output', help='The output directory (includes diffusion parameters and processed dwi) unless option -processing_only is used, in which case this is the output basename')
 options = app.cmdline.add_argument_group('Other options for the DESIGNER script')
@@ -234,7 +245,8 @@ if app.args.smooth:
     run.command('fast -n 4 -t 2 -o tissue brain' + fsl_suffix)
     csfclass = []
     for i in range(4):
-        csfclass.append(float(image.statistic('brain' + fsl_suffix,'mean','tissue_pve_' + str(i) + fsl_suffix).split('/n')[-1]))
+        run.command('fslmaths tissue_pve_' + str(i) + fsl_suffix + ' -thr 0.95 -bin tissue_pve_thr' + str(i) + fsl_suffix)
+        csfclass.append(float(run.command('fslstats brain' + fsl_suffix + ' -k ' + 'tissue_pve_thr' + str(i) + fsl_suffix + ' -P 95')[0]))
     csfind = np.argmax(csfclass)
     run.command('fslmaths tissue_pve_' + str(csfind) + fsl_suffix + ' -thr 0.7 -bin CSFmask' + fsl_suffix)
     run.command('mrconvert CSFmask' + fsl_suffix + ' CSFmask.nii')
