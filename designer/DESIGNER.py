@@ -140,13 +140,13 @@ else: run.function(shutil.move,'dwi.mif','dwidn.mif')
 
 # gibbs artifact correction
 if app.args.degibbs:
-    if app.args.unringbin == 'matlab:'
+    run.command('mrconvert -export_grad_mrtrix grad.txt dwidn.mif dwidn.nii')
+    if app.args.degibbs == 'matlab':
         unringbin = [s for s in PATH if "unring/matlab" in s]
-            if not unringbin:
+        if not unringbin:
             print("cannot find path to unring, please make sure <path/to/unring> or <path/to/unring.m> is in your PATH")
             quit()
         unringbin = "".join(unringbin)
-        run.command('mrconvert -export_grad_mrtrix grad.txt dwidn.mif dwidn.nii')
         os.chdir(designer_root)
         eng = matlab.engine.start_matlab()
         eng.rungibbscorrection(unringbin,path.toTemp('',True),DKI_root,nargout=0)
