@@ -31,7 +31,7 @@ function designer(root, varargin)
 params.gibbscorrect = [1 3 20];
 params.denoising.kernel = [5, 5, 5];
 
-params.smoothing = true;
+params.smoothing.enable = true;
 params.smoothing.kernel = [5, 5];
 params.smoothing.width = 1.2;
 
@@ -123,13 +123,16 @@ else
     system(['cp ', fullfile(rt, [filename, '.nii']), ' ./Analysis/sorted/dwi.nii']);
 end
 
-return
 
 system('dwiextract -bzero -fslgrad ./Analysis/sorted/dwi.bvec ./Analysis/sorted/dwi.bval ./Analysis/sorted/dwi.nii ./Analysis/sorted/PEb0s.nii')
 system('mrconvert -coord 3 0 ./Analysis/sorted/PEb0s.nii ./Analysis/sorted/PEb0.nii')
 
 if exist('rpefile', 'var')
-     [rt, filename] = fileparts(rpefile{1});
+     if iscell(rpefile)
+        [rt, filename] = fileparts(rpefile{1});
+     else
+        [rt, filename] = fileparts(rpefile);
+     end
      if isempty(rt)
       rt = './';
      end
@@ -150,21 +153,26 @@ end
 system(['dwidenoise -extent ', num2str(params.denoising.kernel(1)), ',', num2str(params.denoising.kernel(2)), ',', num2str(params.denoising.kernel(3)), ' -noise ./Analysis/sorted/sigma.nii ./Analysis/sorted/dwi.nii ./Analysis/processed/dn.nii']);
 
 %% Gibbs ringing
-nii = load_untouch_nii('./Analysis/processed/dn.nii'); dwi = single(nii.img);
-gc = unring(dwi, params.gibbscorrect);
-nii.img = gc;
-nii.hdr.dime.glmax = max(gc(:));
-nii.hdr.dime.datatype = 16;
-nii.hdr.dime.bitpix =  32;
-save_untouch_nii(nii, './Analysis/processed/gc.nii');
-            
+
+try 
+    nii = load_untouch_nii('./Analysis/processed/dn.nii'); dwi = single(nii.img);
+    gc = unring(dwi, params.gibbscorrect);
+    nii.img = gc;
+    nii.hdr.dime.glmax = max(gc(:));
+    nii.hdr.dime.datatype = 16;
+    nii.hdr.dime.bitpix =  32;
+    save_untouch_nii(nii, './Analysis/processed/gc.nii');
+catch
+    system(['unring ./Analysis/processed/dn.nii ./Analysis/processed/gc.nii nii -minW ', num2str(params.gibbscorrect(1)) ,' -maxW ', num2str(params.gibbscorrect(2)),' -nsh ', num2str(params.gibbscorrect(3))]);
+end
+
 %% topup + eddy, through MRTRIX3.0 
 
 if exist('rpefile', 'var')
-    system(['dwipreproc ./Analysis/processed/gc.nii ./Analysis/processed/ec.nii -eddy_options "--repol " -rpe_pair -se_epi ./Analysis/sorted/EPrPEb0.nii -pe_dir ', pe, ' -fslgrad ./Analysis/sorted/dwi.bvec ./Analysis/sorted/dwi.bval'])
+    system(['dwipreproc ./Analysis/processed/gc.nii ./Analysis/processed/ec.nii -eddy_options "--repol --data_is_shelled " -rpe_pair -se_epi ./Analysis/sorted/EPrPEb0.nii -pe_dir ', pe, ' -fslgrad ./Analysis/sorted/dwi.bvec ./Analysis/sorted/dwi.bval'])
     %system('dwipreproc  -rpe_pair ./Analysis/sorted/PEb0.nii ./Analysis/sorted/rPEb0.nii -fslgrad ./Analysis/sorted/dwi.bvec ./Analysis/sorted/dwi.bval ', pe, ' ./Analysis/processed/gc.nii ./Analysis/processed/ec.nii')
 else
-    system(['dwipreproc ./Analysis/processed/gc.nii ./Analysis/processed/ec.nii -eddy_options "--repol " -rpe_none -pe_dir ', pe, ' -fslgrad ./Analysis/sorted/dwi.bvec ./Analysis/sorted/dwi.bval'])
+    system(['dwipreproc ./Analysis/processed/gc.nii ./Analysis/processed/ec.nii -eddy_options "--repol --data_is_shelled " -rpe_none -pe_dir ', pe, ' -fslgrad ./Analysis/sorted/dwi.bvec ./Analysis/sorted/dwi.bval'])
 end
 
 %% smooth data (after selecting/excluding CSF) + fitting
@@ -201,7 +209,7 @@ nii = load_untouch_nii('./Analysis/processed/ec.nii'); img = single(nii.img);
 
 
 
-if params.smoothing
+if params.smoothing.enable
     img = smoothing(img, params.smoothing.kernel, params.smoothing.width, csfmask);
     nii.img = img;
     save_untouch_nii(nii, './Analysis/processed/sm.nii');
@@ -217,10 +225,12 @@ if params.ricianbiascorrection
     save_untouch_nii(nii, './Analysis/processed/rc.nii');
 end
 %% fitting
-bval = textread('./Analysis/sorted/dwi.bval')'/1000;  
+bval = textread('./Analysis/sorted/dwi.bval')';  
 bvec = textread('./Analysis/sorted/dwi.bvec')';
+
 options.Excludeb0 = 0;
 outliers = irlls(img,mask,bvec,bval,[],options);          
+
 [~, dt] = dki_fit(img, [bvec, bval], mask, params.fit.constraints, outliers, params.fit.maxbval);
 [fa, md, rd, ad, fe, mk,  rk, ak] = dki_parameters(dt, mask);
 [awf, eas, ias] = wmti_parameters(dt, mask);
