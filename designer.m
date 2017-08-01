@@ -30,11 +30,17 @@ function designer(root, varargin)
 
 params.gibbscorrect = [1 3 20];
 params.denoising.kernel = [5, 5, 5];
+
+params.smoothing = true;
 params.smoothing.kernel = [5, 5];
 params.smoothing.width = 1.2;
+
 params.fit.maxbval = 3;
 params.fit.constraints = [0 1 0];
-params.b1correction = 'true';
+
+params.b1correction = true;
+params.ricianbiascorrection = true;
+
 
 
 nargin  = numel(varargin);
@@ -195,17 +201,21 @@ nii = load_untouch_nii('./Analysis/processed/ec.nii'); img = single(nii.img);
 
 
 
-img = smoothing(img, params.smoothing.kernel, params.smoothing.width, csfmask);
-nii.img = img;
-save_untouch_nii(nii, './Analysis/processed/sm.nii');
+if params.smoothing
+    img = smoothing(img, params.smoothing.kernel, params.smoothing.width, csfmask);
+    nii.img = img;
+    save_untouch_nii(nii, './Analysis/processed/sm.nii');
+end
 
 %% Rician bias correction
-for i = 1:size(img, 4)
-    img(:,:,:,i) = sqrt(abs(img(:,:,:,i).^2 - sigma.^2));
-end
-nii.img = img;
-save_untouch_nii(nii, './Analysis/processed/rc.nii');
 
+if params.ricianbiascorrection
+    for i = 1:size(img, 4)
+        img(:,:,:,i) = sqrt(abs(img(:,:,:,i).^2 - sigma.^2));
+    end
+    nii.img = img;
+    save_untouch_nii(nii, './Analysis/processed/rc.nii');
+end
 %% fitting
 bval = textread('./Analysis/sorted/dwi.bval')'/1000;  
 bvec = textread('./Analysis/sorted/dwi.bvec')';
@@ -217,7 +227,7 @@ outliers = irlls(img,mask,bvec,bval,[],options);
 
 %% save data
 
-nii = load_untouch_nii('./Analysis/processed/rc.nii');
+nii = load_untouch_nii('./Analysis/processed/ec.nii');
 
 nii.hdr.dime.dim(5) = 1;
 nii.hdr.dime.datatype = 16;
