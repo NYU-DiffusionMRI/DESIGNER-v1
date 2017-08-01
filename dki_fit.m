@@ -1,4 +1,4 @@
-function [b0, dt] = dki_fit(dwi, grad, mask, constraints, outliers)
+function [b0, dt] = dki_fit(dwi, grad, mask, constraints, outliers, maxbval)
     % Diffusion Kurtosis Imaging tensor estimation using 
     % (constrained) weighted linear least squares estimation 
     % -----------------------------------------------------------------------------------
@@ -39,7 +39,9 @@ function [b0, dt] = dki_fit(dwi, grad, mask, constraints, outliers)
     %           c2: Kapp > 0
     %           c3: Kapp < b/(3*Dapp)
     %       default: [0 1 0]
-    % 
+    %     5. maxbval (scalar; default = 2.5ms/um^2), puts an upper bound on the b-values being
+    %     used in the analysis.
+    %
     % Copyright (c) 2017 New York University and University of Antwerp
     %
     % This Source Code Form is subject to the terms of the Mozilla Public
@@ -51,7 +53,24 @@ function [b0, dt] = dki_fit(dwi, grad, mask, constraints, outliers)
     % 
     % For more details, contact: Jelle.Veraart@nyumc.org 
 
-    %% parameter checks
+    
+    %% limit DKI fit to b=3000
+    bval = grad(:, 4);
+    order = floor(log(abs(max(bval)+1))./log(10));
+    if order >= 2
+        grad(:, 4) = grad(:, 4)/1000;
+    end
+    
+    if ~exist('maxbval','var') || isempty(maxbval)
+        maxbval = 2.5;
+    end
+    list = bval<=maxbval;
+    dwi = dwi(:,:,:,list);
+    grad = grad(list, :);
+    
+    
+   
+    %% parameter checks 
     dwi = double(dwi);
     dwi(dwi<=0)=eps;
     [x, y, z, ndwis] = size(dwi);
@@ -67,6 +86,8 @@ function [b0, dt] = dki_fit(dwi, grad, mask, constraints, outliers)
     
     if ~exist('outliers', 'var') || isempty(outliers)
         outliers = false(size(dwi));
+    else
+        outliers = outliers(:,:,:,list);
     end
     
     dwi = vectorize(dwi, mask);

@@ -75,8 +75,13 @@ nvoxels = size(dt, 2);
 for i = 1:nvoxels
     DT = dt([1:3 2 4 5 3 5 6], i);
     DT = reshape(DT, [3 3]);
-    [eigvec, eigval] = eigs(DT);
-    eigval = diag(eigval);
+    try
+        [eigvec, eigval] = eigs(DT);
+        eigval = diag(eigval);
+    catch
+        eigvec = NaN(3, 3);
+        eigval = NaN(3, 1);
+    end
     [eigval, idx] = sort(eigval, 'descend');
     eigvec = eigvec(:, idx);
     l1(i) = eigval(1,:);

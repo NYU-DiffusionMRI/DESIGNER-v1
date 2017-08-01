@@ -69,8 +69,13 @@ nvoxels = size(dt, 2);
 for i = 1:nvoxels
     DT = dt([1:3 2 4 5 3 5 6], i);
     DT = reshape(DT, [3 3]);
-    [eigvec, eigval] = eigs(DT);
-    eigval = diag(eigval);
+    try
+        [eigvec, eigval] = eigs(DT);
+        eigval = diag(eigval);
+    catch
+        eigvec = NaN(3, 3);
+        eigval = NaN(3, 1);
+    end
     
     [eigval, idx] = sort(eigval, 'descend');
     eigvec = eigvec(:, idx);
@@ -111,10 +116,10 @@ for i=1:nvxls
         try
             [akc, adc] = AKC(dt(:, i), dir); 
             akc(akc(:)<0) = 0; % avoiding complext output. However, negative AKC might be taken care of by applying constraints.
-            f = repmat(awf(i), [size(dir, 1), 1]);
+            %f = repmat(awf(i), [size(dir, 1), 1]);
 
-            De=adc.*(1+sqrt(akc.*f./(3*(1-f))));
-            Di=adc.*(1-sqrt(akc.*(1-f)./(3*f)));
+            De=adc.*(1+sqrt(akc*awf(i)/(3*(1-awf(i)))));
+            Di=adc.*(1-sqrt(akc*(1-awf(i))/(3*awf(i))));
 
             dt_e = adc2dt*De; 
             dt_i = adc2dt*Di; 
