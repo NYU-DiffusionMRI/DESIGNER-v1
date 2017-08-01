@@ -132,9 +132,13 @@ function [b0, dt] = dki_fit(dwi, grad, mask, constraints, outliers, maxbval)
         d = zeros([1, size(C, 1)]);
         options = optimset('Display', 'off', 'Algorithm', 'active-set', 'MaxIter', 22000, 'TolCon', 1e-12, 'TolFun', 1e-12, 'TolX', 1e-12, 'MaxFunEvals', 220000);
         parfor i = 1:nvoxels
-            in_ = outliers(:, i) == 0;
-            wi = w(:,i); Wi = diag(wi(in_));             
-            dt(:, i) = lsqlin(Wi*b(in_, :),Wi*log(dwi(in_,i)),-C, d, [],[],[],[],[],options);
+            try
+                in_ = outliers(:, i) == 0;
+                wi = w(:,i); Wi = diag(wi(in_));             
+                dt(:, i) = lsqlin(Wi*b(in_, :),Wi*log(dwi(in_,i)),-C, d, [],[],[],[],[],options);
+            catch
+                dt(:, i) = 0;
+            end
         end
     else
         parfor i = 1:nvoxels
