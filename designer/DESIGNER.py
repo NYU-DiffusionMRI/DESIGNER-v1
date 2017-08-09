@@ -158,12 +158,12 @@ if app.args.degibbs:
         run.command('unring dwidn.nii dwigc' + fsl_suffix + ' -minW 1 -maxW 3 -nsh 20')
         run.command('mrconvert -grad grad.txt dwigc' + fsl_suffix + ' dwigc.mif')
         file.delTempFile('dwigc' + fsl_suffix)
-    os.remove('dwidn.nii')
+    file.delTempFile('dwidn.nii')
 else: run.function(shutil.move,'dwidn.mif','dwigc.mif')
 
 # rician bias correction
 if app.args.rician:
-    bvalu = np.unique(np.around(bval, decimals=-1))
+    bvalu = np.unique(np.multiply(np.around(np.divide(bval,25), decimals=-1),25))
     lowbval = [ i for i in bvalu if i<=2000]
     lowbvalstr = ','.join(str(i) for i in lowbval)
     run.command('dwiextract -shell ' + lowbvalstr + ' dwi.mif dwilowb.mif')
@@ -207,7 +207,7 @@ if app.args.eddy:
         run.command('mrconvert -grad grad.txt ' + path.fromUser(app.args.rpe_all,True) + ' dwirpe.mif')
         run.command('mrcat -axis 3 dwitf.mif dwirpe.mif dwipe_rpe.mif')
         run.command('dwipreproc -eddy_options " --repol --data_is_shelled" -rpe_all -pe_dir ' + app.args.pe_dir + ' dwipe_rpe.mif dwiec.mif')
-        os.remove('tmp.mif')
+        file.delTempFile('tmp.mif')
     elif app.args.rpe_header:
         run.command('dwipreproc -eddy_options " --repol --data_is_shelled" -rpe_header dwipe_rpe.mif dwiec.mif')
 else: run.function(shutil.move,'dwitf.mif','dwiec.mif')
