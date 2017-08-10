@@ -140,25 +140,26 @@ else: run.function(shutil.move,'dwi.mif','dwidn.mif')
 
 # gibbs artifact correction
 if app.args.degibbs:
-    run.command('mrconvert -export_grad_mrtrix grad.txt dwidn.mif dwidn.nii')
-    if app.args.degibbs == 'matlab':
-        unringbin = [s for s in PATH if "unring/matlab" in s]
-        if not unringbin:
-            print("cannot find path to unring, please make sure <path/to/unring> or <path/to/unring.m> is in your PATH")
-            quit()
-        unringbin = "".join(unringbin)
-        os.chdir(designer_root)
-        eng = matlab.engine.start_matlab()
-        eng.rungibbscorrection(unringbin,path.toTemp('',True),DKI_root,nargout=0)
-        eng.quit()
-        app.gotoTempDir()
-        run.command('mrconvert -grad grad.txt dwigc.nii dwigc.mif')
-        file.delTempFile('dwigc.nii')
-    if app.args.degibbs == 'fsl':
-        run.command('unring dwidn.nii dwigc' + fsl_suffix + ' -minW 1 -maxW 3 -nsh 20')
-        run.command('mrconvert -grad grad.txt dwigc' + fsl_suffix + ' dwigc.mif')
-        file.delTempFile('dwigc' + fsl_suffix)
-    file.delTempFile('dwidn.nii')
+#    run.command('mrconvert -export_grad_mrtrix grad.txt dwidn.mif dwidn.nii')
+#    if app.args.degibbs == 'matlab':
+#        unringbin = [s for s in PATH if "unring/matlab" in s]
+#        if not unringbin:
+#            print("cannot find path to unring, please make sure <path/to/unring> or <path/to/unring.m> is in your PATH")
+#            quit()
+#        unringbin = "".join(unringbin)
+#        os.chdir(designer_root)
+#        eng = matlab.engine.start_matlab()
+#        eng.rungibbscorrection(unringbin,path.toTemp('',True),DKI_root,nargout=0)
+#        eng.quit()
+#        app.gotoTempDir()
+#        run.command('mrconvert -grad grad.txt dwigc.nii dwigc.mif')
+#        file.delTempFile('dwigc.nii')
+#    if app.args.degibbs == 'fsl':
+#        run.command('unring dwidn.nii dwigc' + fsl_suffix + ' -minW 1 -maxW 3 -nsh 20')
+#        run.command('mrconvert -grad grad.txt dwigc' + fsl_suffix + ' dwigc.mif')
+#        file.delTempFile('dwigc' + fsl_suffix)
+#    file.delTempFile('dwidn.nii')
+    run.command('mrdegibbs -nshifts 20 -minW 1 -maxW 3 dwidn.mif dwigc.mif')
 else: run.function(shutil.move,'dwidn.mif','dwigc.mif')
 
 # rician bias correction
