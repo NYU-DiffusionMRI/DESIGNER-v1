@@ -136,7 +136,7 @@ else: extent = '5,5,5'
 # denoising
 if app.args.denoise:
 	run.command('dwidenoise -extent ' + extent + ' -noise fullnoisemap.mif dwi.mif dwidn.mif')
-else: run.function(shutil.move,'dwi.mif','dwidn.mif')
+else: run.function(shutil.copy,'dwi.mif','dwidn.mif')
 
 # gibbs artifact correction
 if app.args.degibbs:
