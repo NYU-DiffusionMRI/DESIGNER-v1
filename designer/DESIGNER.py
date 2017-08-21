@@ -211,6 +211,9 @@ if app.args.eddy:
         file.delTempFile('tmp.mif')
     elif app.args.rpe_header:
         run.command('dwipreproc -eddy_options " --repol --data_is_shelled" -rpe_header dwipe_rpe.mif dwiec.mif')
+    elif not app.args.rpe_header and not app.args.rpe_all and not app.args.rpe_pair:
+        print("the eddy option must run alongside -rpe_header, -rpe_all, or -rpe_pair option")
+        quit()
 else: run.function(shutil.move,'dwitf.mif','dwiec.mif')
 
 # b1 bias field correction
