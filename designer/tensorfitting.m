@@ -19,17 +19,18 @@ if ischar(fitconstraints)
 end
 
 if detectoutliers
-    [outliers,~,~,~,~] = irlls(dwi,mask,bvec,bval,[],[]);
+    options.Excludeb0 = 0;
+    outliers = irlls(dwi,mask,bvec,bval,[],options);
     if ~fitconstraints
-        [b0,dt] = dki_fit(dwi,[bvec,bval],mask,[],outliers);
+        [b0,dt] = dki_fit(dwi,[bvec,bval],mask,[0,1,0],outliers,3);
     else
-        [b0,dt] = dki_fit(dwi,[bvec,bval],mask,fitconstraints,outliers);
+        [b0,dt] = dki_fit(dwi,[bvec,bval],mask,fitconstraints,outliers,3);
     end
 else
     if ~fitconstraints
-        [b0,dt] = dki_fit(dwi,[bvec,bval],mask,[]);
+        [b0,dt] = dki_fit(dwi,[bvec,bval],mask,[0,1,0],[],3);
     else
-        [b0,dt] = dki_fit(dwi,[bvec,bval],mask,fitconstraints);
+        [b0,dt] = dki_fit(dwi,[bvec,bval],mask,fitconstraints,[],3);
     end
 end
 
@@ -81,4 +82,3 @@ if wmti
 end
 
 end
-

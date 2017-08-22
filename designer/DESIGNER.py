@@ -251,14 +251,14 @@ else: run.function(shutil.move,'dwibc.mif','dwism.mif')
 
 # rician bias correction
 if app.args.rician:
-    bvalu = np.unique(np.multiply(np.around(np.divide(bval,25), decimals=-1),25))
+    bvalu = np.unique(np.around(bval, decimals=-1))
     lowbval = [ i for i in bvalu if i<=2000]
     lowbvalstr = ','.join(str(i) for i in lowbval)
     run.command('dwiextract -shell ' + lowbvalstr + ' dwi.mif dwilowb.mif')
     run.command('dwidenoise -extent ' + extent + ' -noise lowbnoisemap.mif dwilowb.mif tmp.mif')
     file.delTempFile('tmp.mif')
-    run.command('mrcalc dwism.mif 2 -pow lowbnoisemap.mif 2 -pow -sub -abs -sqrt - | mrcalc - -finite - 0 -if dwirc.mif')
-    run.command('mrconvert -export_grad_fsl dwi_designer.bvec dwi_designer.bval dwirc.mif dwi_designer.nii')
+    run.command('mrcalc dwism.mif 2 -pow lowbnoisemap.mif 2 -pow -sub -abs -sqrt - | mrcalc - -finite - 0 -if dwi_designer.nii')
+    run.command('mrinfo -export_grad_fsl dwi_designer.bvec dwi_designer.bval dwism.mif')
 else: run.command('mrconvert -export_grad_fsl dwi_designer.bvec dwi_designer.bval dwism.mif dwi_designer.nii')
 
 if app.args.processing_only:
