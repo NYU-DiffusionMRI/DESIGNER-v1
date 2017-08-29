@@ -221,7 +221,7 @@ if app.args.b1correct:
 else: run.function(shutil.move,'dwiec.mif','dwibc.mif')
 
 # generate a final brainmask
-run.command('dwiextract -bzero dwibc.mif - | mrmath -aixs 3 - mean b0bc.nii')
+run.command('dwiextract -bzero dwibc.mif - | mrmath -axis 3 - mean b0bc.nii')
 # run.command('dwi2mask dwibc.mif - | maskfilter - dilate brain_mask.nii')
 # run.command('fslmaths b0bc.nii -mas brain_mask.nii brain')
 run.command('bet b0bc.nii brain' + fsl_suffix + ' -m -f 0.25')
