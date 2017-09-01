@@ -10,6 +10,6 @@ dwism = smoothing(dwi,kernelsize,width,csf);
 
 nii.img = dwism;
 nii.hdr.dime.glmax = max(dwism(:));
-save_untouch_nii(nii,fullfile(root,'dwi_designer.nii'));
+save_untouch_nii(nii,fullfile(root,'dwism.nii'));
 
 end
