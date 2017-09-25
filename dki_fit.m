@@ -59,6 +59,7 @@ function [b0, dt] = dki_fit(dwi, grad, mask, constraints, outliers, maxbval)
     order = floor(log(abs(max(bval)+1))./log(10));
     if order >= 2
         grad(:, 4) = grad(:, 4)/1000;
+        bval = grad(:, 4);
     end
     
     if ~exist('maxbval','var') || isempty(maxbval)
