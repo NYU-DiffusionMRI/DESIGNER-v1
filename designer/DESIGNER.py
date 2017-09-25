@@ -240,7 +240,8 @@ if app.args.smooth:
         csfclass.append(float(run.command('fslstats brain' + fsl_suffix + ' -k ' + 'tissue_pve_thr' + str(i) + fsl_suffix + ' -P 95')[0]))
     csfind = np.argmax(csfclass)
     run.command('fslmaths tissue_pve_' + str(csfind) + fsl_suffix + ' -thr 0.7 -bin CSFmask' + fsl_suffix)
-    run.command('mrconvert CSFmask' + fsl_suffix + ' CSFmask.nii')
+    if fsl_suffix.endswith('.nii.gz'):
+        run.command('mrconvert CSFmask' + fsl_suffix + ' CSFmask.nii')
     os.chdir(designer_root)
     eng = matlab.engine.start_matlab()
     eng.runsmoothing(path.toTemp('',True),app.args.smooth,DKI_root,nargout=0)
