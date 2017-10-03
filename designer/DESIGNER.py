@@ -57,6 +57,7 @@ options.add_argument('-DTIparams', action='store_true', help='Include DTI parame
 options.add_argument('-DKIparams', action='store_true', help='Include DKI parameters in output folder (mk,ak,rk)')
 options.add_argument('-WMTIparams', action='store_true', help='Include DKI parameters in output folder (awf,ias_params,eas_params)')
 options.add_argument('-processing_only', action='store_true', help='output only the processed diffusion weighted image')
+options.add_argument('-datatype', help='If using the "-processing_only" option, you can specify the output datatype. Valid options are float32, float32le, float32be, float64, float64le, float64be, int64, uint64, int64le, uint64le, int64be, uint64be, int32, uint32, int32le, uint32le, int32be, uint32be, int16, uint16, int16le, uint16le, int16be, uint16be, cfloat32, cfloat32le, cfloat32be, cfloat64, cfloat64le, cfloat64be, int8, uint8, bit')
 options.add_argument('-fit_constraints',help='constrain the wlls fit (default 0,1,0)')
 options.add_argument('-outliers',action='store_true',help='Perform IRWLLS outlier detection')
 rpe_options = app.cmdline.add_argument_group('Options for specifying the acquisition phase-encoding design')
@@ -263,7 +264,10 @@ if app.args.rician:
 else: run.command('mrconvert -export_grad_fsl dwi_designer.bvec dwi_designer.bval dwism.mif dwi_designer.nii')
 
 if app.args.processing_only:
-    shutil.copyfile(path.toTemp('dwi_designer.nii',True),path.fromUser(app.args.output + '.nii',True))
+    if app.args.datatype:
+        run.command('mrconvert -datatype ' + app.args.datatype + ' ' + path.toTemp('dwi_designer.nii',True) + ' ' + path.fromUser(app.args.output + '.nii',True))
+    else:
+        shutil.copyfile(path.toTemp('dwi_designer.nii',True),path.fromUser(app.args.output + '.nii',True))
     shutil.copyfile(path.toTemp('dwi_designer.bvec',True),path.fromUser(app.args.output + '.bvec',True))
     shutil.copyfile(path.toTemp('dwi_designer.bval',True),path.fromUser(app.args.output + '.bval',True))
 else:
