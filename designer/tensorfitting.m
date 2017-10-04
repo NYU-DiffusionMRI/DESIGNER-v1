@@ -9,6 +9,7 @@ bvallist = dir(fullfile(root,'dwi_designer.bval')); bvaldir = bvallist.name;
 bveclist = dir(fullfile(root,'dwi_designer.bvec')); bvecdir = bveclist.name;
 bval = textread(fullfile(root,bvaldir)); bval = bval(:, 1:ndwis)'; bval = bval./1000;
 bvec = textread(fullfile(root,bvecdir)); bvec = bvec(:, 1:ndwis)';
+maxbval = max(bval);
 
 detectoutliers = logical(detectoutliers);
 dti = logical(dti);
@@ -22,15 +23,15 @@ if detectoutliers
     options.Excludeb0 = 0;
     outliers = irlls(dwi,mask,bvec,bval,[],options);
     if ~fitconstraints
-        [b0,dt] = dki_fit(dwi,[bvec,bval],mask,[0,1,0],outliers,3);
+        [b0,dt] = dki_fit(dwi,[bvec,bval],mask,[0,1,0],outliers,maxbval);
     else
-        [b0,dt] = dki_fit(dwi,[bvec,bval],mask,fitconstraints,outliers,3);
+        [b0,dt] = dki_fit(dwi,[bvec,bval],mask,fitconstraints,outliers,maxbval);
     end
 else
     if ~fitconstraints
-        [b0,dt] = dki_fit(dwi,[bvec,bval],mask,[0,1,0],[],3);
+        [b0,dt] = dki_fit(dwi,[bvec,bval],mask,[0,1,0],[],maxbval);
     else
-        [b0,dt] = dki_fit(dwi,[bvec,bval],mask,fitconstraints,[],3);
+[b0,dt] = dki_fit(dwi,[bvec,bval],mask,fitconstraints,[],maxbval);
     end
 end
 
