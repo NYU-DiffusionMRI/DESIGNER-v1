@@ -3,10 +3,16 @@ import dicom
 import numpy as np
 
 # look for inout dicoms
-dpath = '/mccoy/input/test-file-array'
+DcmPath = '/mccoy/input/test-file-array'
 # define output direcotry
-newDcmBase='/mccoy/output/test-file-array'
-dcmlist = os.listdir(dpath)
+newDcmPath='/mccoy/output/test-file-array'
+dcmlist = os.listdir(DcmPath)
+
+#DcmBaseName = os.path.basename(os.path.normpath(DcmPath))
+#DcmBasePath = os.path.dirname(os.path.abspath(DcmBaseName))
+#newDcmBase = os.path.join(DcmBasePath,'DN_' + DcmBaseName)
+#if not os.path.exists(newDcmBase):
+#    os.makedirs(newDcmBase)
 
 # get important DICOM header information (image resoution, matrix size, tile dimentions, series description, series ID, series sumber
 info = dicom.read_file(os.path.join(dpath,dcmlist[0]))
@@ -25,12 +31,6 @@ SeriesNumber = info.SeriesNumber
 newSeriesID = SeriesID[:-16] + str(np.int(np.floor(1000000000 + 8999999999*np.random.random()))) + SeriesID[-6:]
 newSeriesDescription = 'Denoised_' + SeriesDescription
 newSeriesNumber = SeriesNumber + 200
-
-#DcmBaseName = os.path.basename(os.path.normpath(dpath))
-#DcmBasePath = os.path.dirname(os.path.abspath(DcmBaseName))
-#newDcmBase = os.path.join(DcmBasePath,'DN_' + DcmBaseName)
-#if not os.path.exists(newDcmBase):
-#    os.makedirs(newDcmBase)
 
 if istimeseries:
     newSOPUID = []
@@ -61,15 +61,17 @@ if istimeseries:
         info.SeriesNumber = newSeriesNumber
         info.SeriesID = newSeriesID
         info.SOPInstanceUID = newSOPUID[i]
+        
         c = 0
         if ismosaic:
             for j in range(1, NumberOfTiles[0]+1):
                 for k in range(1, NumberOfTiles[1]+1):
                     img[(j-1)*matrixsize[0]:(j)*matrixsize[0], (k-1)*matrixsize[1]:(k)*matrixsize[1]] = Idn[:,:,c,i]
                     c = c+1
+
         info.pixel_array = img
         info.PixelData = info.pixel_array.tostring()
-        info.save_as(os.path.join(newDcmBase,'IM_00'+str(i)+'.dcm'))
+        info.save_as(os.path.join(newDcmPath, str(i)))
 
 sys.exit(0)
 
