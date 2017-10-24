@@ -52,6 +52,7 @@ options.add_argument('-rician', action='store_true', help='Perform Rician bias c
 options.add_argument('-prealign', action='store_true', help='If there are multiple input diffusion series, do rigid alignment prior to eddy to maximize motion correction performance')
 options.add_argument('-eddy', action='store_true', help='run fsl eddy (note that if you choose this command you must also choose a phase encoding option')
 options.add_argument('-b1correct', action='store_true', help='Include a bias correction step in dwi preprocessing', default=False)
+options.add_argument('-normalise', action='store_true', help='normalize the dwi volume to median b0 CSF intensity of 1000 (useful for multiple dwi acquisitions)', default=False)
 options.add_argument('-smooth', metavar=('fwhm'), help='Include a (csf-free) smoothing step during dwi preprocessing. FWHM is usually 1.20 x voxel size')
 options.add_argument('-DTIparams', action='store_true', help='Include DTI parameters in output folder (md,ad,rd,fa,eigenvalues, eigenvectors')
 options.add_argument('-DKIparams', action='store_true', help='Include DKI parameters in output folder (mk,ak,rk)')
@@ -136,11 +137,13 @@ else: extent = '5,5,5'
 
 # denoising
 if app.args.denoise:
-	run.command('dwidenoise -extent ' + extent + ' -noise fullnoisemap.mif dwi.mif dwidn.mif')
+    print("...Beginning denoising")
+    run.command('dwidenoise -extent ' + extent + ' -noise fullnoisemap.mif dwi.mif dwidn.mif')
 else: run.function(shutil.copy,'dwi.mif','dwidn.mif')
 
 # gibbs artifact correction
 if app.args.degibbs:
+    print("...Beginning degibbsing")
 #    run.command('mrconvert -export_grad_mrtrix grad.txt dwidn.mif dwidn.nii')
 #    if app.args.degibbs == 'matlab':
 #        unringbin = [s for s in PATH if "unring/matlab" in s]
@@ -183,6 +186,7 @@ else: run.function(shutil.move,'dwigc.mif','dwitf.mif')
 # epi + eddy current and motion correction
 # if number of input volumes is greater than 1, make a new acqp and index file.
 if app.args.eddy:
+    print("...Beginning EDDY")
     if app.args.rpe_none:
         run.command('dwipreproc -eddy_options " --repol --data_is_shelled" -rpe_none -pe_dir ' + app.args.pe_dir + ' dwitf.mif dwiec.mif')
     elif app.args.rpe_pair:
@@ -208,6 +212,7 @@ else: run.function(shutil.move,'dwitf.mif','dwiec.mif')
 
 # b1 bias field correction
 if app.args.b1correct:
+    print("Beginning B1 correction")
     if len(DWInlist) == 1:
         run.command('dwibiascorrect -fsl dwiec.mif dwibc.mif')
     else:
@@ -222,6 +227,7 @@ if app.args.b1correct:
 else: run.function(shutil.move,'dwiec.mif','dwibc.mif')
 
 # generate a final brainmask
+print("...Computing brain mask")
 run.command('dwiextract -bzero dwibc.mif - | mrmath -axis 3 - mean b0bc.nii')
 # run.command('dwi2mask dwibc.mif - | maskfilter - dilate brain_mask.nii')
 # run.command('fslmaths b0bc.nii -mas brain_mask.nii brain')
@@ -231,8 +237,8 @@ if os.path.isfile('brain_mask.nii.gz'):
         shutil.copyfileobj(f_in, f_out)
     file.delTempFile('brain_mask' + fsl_suffix)
 
-# smoothing (excluding CSF)
-if app.args.smooth:
+if app.args.smooth or app.args.normalise:
+    print("...Computing CSF mask")
     run.command('mrconvert -force -export_grad_mrtrix grad.txt dwibc.mif dwibc.nii')
     run.command('fast -n 4 -t 2 -o tissue brain' + fsl_suffix)
     csfclass = []
@@ -243,6 +249,10 @@ if app.args.smooth:
     run.command('fslmaths tissue_pve_' + str(csfind) + fsl_suffix + ' -thr 0.7 -bin CSFmask' + fsl_suffix)
     if fsl_suffix.endswith('.nii.gz'):
         run.command('mrconvert CSFmask' + fsl_suffix + ' CSFmask.nii')
+
+# smoothing (excluding CSF)
+if app.args.smooth:
+    print("...Beginning Smoothing")
     os.chdir(designer_root)
     eng = matlab.engine.start_matlab()
     eng.runsmoothing(path.toTemp('',True),app.args.smooth,DKI_root,nargout=0)
@@ -253,15 +263,31 @@ else: run.function(shutil.move,'dwibc.mif','dwism.mif')
 
 # rician bias correction
 if app.args.rician:
+    print("...Beginning Rician Correction")
     bvalu = np.unique(np.around(bval, decimals=-1))
     lowbval = [ i for i in bvalu if i<=2000]
     lowbvalstr = ','.join(str(i) for i in lowbval)
     run.command('dwiextract -shell ' + lowbvalstr + ' dwi.mif dwilowb.mif')
     run.command('dwidenoise -extent ' + extent + ' -noise lowbnoisemap.mif dwilowb.mif tmp.mif')
     file.delTempFile('tmp.mif')
-    run.command('mrcalc dwism.mif 2 -pow lowbnoisemap.mif 2 -pow -sub -abs -sqrt - | mrcalc - -finite - 0 -if dwi_designer.nii')
-    run.command('mrinfo -export_grad_fsl dwi_designer.bvec dwi_designer.bval dwism.mif')
-else: run.command('mrconvert -export_grad_fsl dwi_designer.bvec dwi_designer.bval dwism.mif dwi_designer.nii')
+    run.command('mrcalc dwism.mif 2 -pow lowbnoisemap.mif 2 -pow -sub -abs -sqrt - | mrcalc - -finite - 0 -if dwirc.mif')
+else: run.command(shutil.move,'dwism.mif','dwirc.mif')
+
+# b0 normalisation
+if app.args.normalise:
+    print("...Beginning Normalisation")
+    if len(DWInlist) == 1:
+        run.command('dwinormalise dwirc.mif CSFmask.nii dwinm.mif')
+    else:
+        miflist = []
+        for idx,i in enumerate(DWInlist):
+            run.command('mrconvert -coord 3 ' + idxlist[idx] + ' dwirc.mif dwirc' + str(idx) + '.mif')
+            run.command('dwinormalise dwirc' + str(idx) + '.mif CSFmask.nii dwinm' + str(idx) + '.mif')
+            miflist.append('dwinm' + str(idx) + '.mif')
+            DWImif = ' '.join(miflist)
+        run.command('mrcat -axis 3 ' + DWImif + ' dwi_designer.nii')
+    run.command('mrinfo -export_grad_fsl dwi_designer.bvec dwi_designer.bval dwirc.mif')
+else: run.command('mrconvert -export_grad_fsl dwi_designer.bvec dwi_designer.bval dwirc.mif dwi_designer.nii')
 
 if app.args.processing_only:
     if app.args.datatype:
@@ -278,6 +304,7 @@ else:
     shutil.copyfile(path.toTemp('dwi_designer.bval',True),path.fromUser(app.args.output + '/dwi_designer.bval', True))
 
 if not app.args.processing_only:
+    print("...Beginning tensor estimation")
     os.chdir(designer_root)
     eng = matlab.engine.start_matlab()
     if app.args.outliers:
