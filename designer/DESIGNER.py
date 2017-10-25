@@ -94,6 +94,7 @@ miflist = []
 idxlist = []
 dwi_ind_size = [[0,0,0,0]]
 
+
 if len(DWInlist) == 1:
 	run.command('mrconvert -stride -1,2,3,4 -fslgrad ' + ''.join(DWInlist) + '.bvec ' + ''.join(DWInlist) + '.bval ' + ''.join(DWInlist) + ''.join(DWIext) + ' ' + path.toTemp('dwi.mif',True))
 else:
@@ -212,7 +213,7 @@ else: run.function(shutil.move,'dwitf.mif','dwiec.mif')
 
 # b1 bias field correction
 if app.args.b1correct:
-    print("Beginning B1 correction")
+    print("...Beginning B1 correction")
     if len(DWInlist) == 1:
         run.command('dwibiascorrect -fsl dwiec.mif dwibc.mif')
     else:
@@ -271,7 +272,7 @@ if app.args.rician:
     run.command('dwidenoise -extent ' + extent + ' -noise lowbnoisemap.mif dwilowb.mif tmp.mif')
     file.delTempFile('tmp.mif')
     run.command('mrcalc dwism.mif 2 -pow lowbnoisemap.mif 2 -pow -sub -abs -sqrt - | mrcalc - -finite - 0 -if dwirc.mif')
-else: run.command(shutil.move,'dwism.mif','dwirc.mif')
+else: run.function(shutil.move,'dwism.mif','dwirc.mif')
 
 # b0 normalisation
 if app.args.normalise:
@@ -311,13 +312,11 @@ if not app.args.processing_only:
         outliers=1
     else:
         outliers=0
-    if app.args.DTIparams:
-        DTI=1
-    else:
+    DTI=1
+    if not app.args.DTIparams:
         DTI=0
-    if app.args.DKIparams:
-        DKI=1
-    else:
+    DKI=1
+    if not app.args.DKIparams:
         DKI=0
     if app.args.WMTIparams:
         WMTI=1

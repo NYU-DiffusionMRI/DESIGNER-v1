@@ -1,0 +1,1 @@
+/Users/Ben/Desktop/Diffusion-Kurtosis-Imaging/designer/DESIGNER.py -rician -tempdir test_proc -nocleanup -DKIparams M3655__DIFF_meso_s3.nii,M3655__DIFF_meso_research_s6.nii test
