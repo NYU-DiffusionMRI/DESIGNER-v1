@@ -262,6 +262,8 @@ if app.args.smooth:
     run.command('mrconvert -grad grad.txt dwism.nii dwism.mif')
 else: run.function(shutil.move,'dwibc.mif','dwism.mif')
 
+run.command('mrinfo -export_grad_fsl dwi_designer.bvec dwi_designer.bval dwism.mif')
+
 # rician bias correction
 if app.args.rician:
     print("...Beginning Rician Correction")
@@ -269,9 +271,9 @@ if app.args.rician:
     lowbval = [ i for i in bvalu if i<=2000]
     lowbvalstr = ','.join(str(i) for i in lowbval)
     run.command('dwiextract -shell ' + lowbvalstr + ' dwi.mif dwilowb.mif')
-    run.command('dwidenoise -extent ' + extent + ' -noise lowbnoisemap.mif dwilowb.mif tmp.mif')
+    run.command('dwidenoise -extent ' + extent + ' -noise - dwilowb.mif tmp.mif | mrcalc - -finite - 0 -if lowbnoisemap.mif')
     file.delTempFile('tmp.mif')
-    run.command('mrcalc dwism.mif 2 -pow lowbnoisemap.mif 2 -pow -sub -abs -sqrt - | mrcalc - -finite - 0 -if dwirc.mif')
+    run.command('mrcalc dwism.mif 2 -pow lowbnoisemap.mif 2 -pow -sub -abs -sqrt - | mrcalc - -finite - 0 -if dwirc.mif') # this line sometimes kills gradient info
 else: run.function(shutil.move,'dwism.mif','dwirc.mif')
 
 # b0 normalisation
@@ -289,7 +291,6 @@ if app.args.normalise:
         run.command('mrcat -axis 3 ' + DWImif + ' dwinm.mif')
 else: run.function(shutil.move,'dwirc.mif','dwinm.mif')
 
-run.command('mrinfo -export_grad_fsl dwi_designer.bvec dwi_designer.bval dwinm.mif')
 run.command('mrconvert dwinm.mif dwi_designer.nii')
 
 if app.args.processing_only:
