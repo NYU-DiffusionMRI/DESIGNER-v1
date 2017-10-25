@@ -286,9 +286,11 @@ if app.args.normalise:
             run.command('dwinormalise dwirc' + str(idx) + '.mif CSFmask.nii dwinm' + str(idx) + '.mif')
             miflist.append('dwinm' + str(idx) + '.mif')
             DWImif = ' '.join(miflist)
-        run.command('mrcat -axis 3 ' + DWImif + ' dwi_designer.nii')
-    run.command('mrinfo -export_grad_fsl dwi_designer.bvec dwi_designer.bval dwirc.mif')
-else: run.command('mrconvert -export_grad_fsl dwi_designer.bvec dwi_designer.bval dwirc.mif dwi_designer.nii')
+        run.command('mrcat -axis 3 ' + DWImif + ' dwinm.nii')
+else: run.function(shutil.move,'dwirc.mif','dwinm.mif')
+
+run.command('mrinfo -export_grad_fsl dwi_designer.bvec dwi_designer.bval dwinm.mif')
+run.command('mrconvert dwinm.mif dwi_designer.nii')
 
 if app.args.processing_only:
     if app.args.datatype:
