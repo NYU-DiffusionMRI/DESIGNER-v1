@@ -286,7 +286,7 @@ if app.args.normalise:
             run.command('dwinormalise dwirc' + str(idx) + '.mif CSFmask.nii dwinm' + str(idx) + '.mif')
             miflist.append('dwinm' + str(idx) + '.mif')
             DWImif = ' '.join(miflist)
-        run.command('mrcat -axis 3 ' + DWImif + ' dwinm.nii')
+        run.command('mrcat -axis 3 ' + DWImif + ' dwinm.mif')
 else: run.function(shutil.move,'dwirc.mif','dwinm.mif')
 
 run.command('mrinfo -export_grad_fsl dwi_designer.bvec dwi_designer.bval dwinm.mif')
