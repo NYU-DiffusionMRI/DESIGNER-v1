@@ -54,10 +54,10 @@ options.add_argument('-eddy', action='store_true', help='run fsl eddy (note that
 options.add_argument('-b1correct', action='store_true', help='Include a bias correction step in dwi preprocessing', default=False)
 options.add_argument('-normalise', action='store_true', help='normalize the dwi volume to median b0 CSF intensity of 1000 (useful for multiple dwi acquisitions)', default=False)
 options.add_argument('-smooth', metavar=('fwhm'), help='Include a (csf-free) smoothing step during dwi preprocessing. FWHM is usually 1.20 x voxel size')
-#options.add_argument('-DTIparams', action='store_true', help='Include DTI parameters in output folder (md,ad,rd,fa,eigenvalues, eigenvectors')
-#options.add_argument('-DKIparams', action='store_true', help='Include DKI parameters in output folder (mk,ak,rk)')
+options.add_argument('-DTIparams', action='store_true', help='Include DTI parameters in output folder (md,ad,rd,fa,eigenvalues, eigenvectors')
+options.add_argument('-DKIparams', action='store_true', help='Include DKI parameters in output folder (mk,ak,rk)')
 options.add_argument('-WMTIparams', action='store_true', help='Include DKI parameters in output folder (awf,ias_params,eas_params)')
-options.add_argument('-processing_only', action='store_true', help='output only the processed diffusion weighted image')
+#options.add_argument('-processing_only', action='store_true', help='output only the processed diffusion weighted image')
 options.add_argument('-datatype', metavar=('spec'), help='If using the "-processing_only" option, you can specify the output datatype. Valid options are float32, float32le, float32be, float64, float64le, float64be, int64, uint64, int64le, uint64le, int64be, uint64be, int32, uint32, int32le, uint32le, int32be, uint32be, int16, uint16, int16le, uint16le, int16be, uint16be, cfloat32, cfloat32le, cfloat32be, cfloat64, cfloat64le, cfloat64be, int8, uint8, bit')
 options.add_argument('-fit_constraints',help='constrain the wlls fit (default 0,1,0)')
 options.add_argument('-outliers',action='store_true',help='Perform IRWLLS outlier detection')
@@ -253,7 +253,7 @@ if app.args.smooth or app.args.normalise:
 
 # smoothing (excluding CSF)
 if app.args.smooth:
-    print("...Beginning Smoothing")
+    print("...Beginning smoothing")
     os.chdir(designer_root)
     eng = matlab.engine.start_matlab()
     eng.runsmoothing(path.toTemp('',True),app.args.smooth,DKI_root,nargout=0)
@@ -266,7 +266,7 @@ run.command('mrinfo -export_grad_fsl dwi_designer.bvec dwi_designer.bval dwism.m
 
 # rician bias correction
 if app.args.rician:
-    print("...Beginning Rician Correction")
+    print("...Beginning Rician correction")
     bvalu = np.unique(np.around(bval, decimals=-1))
     lowbval = [ i for i in bvalu if i<=2000]
     lowbvalstr = ','.join(str(i) for i in lowbval)
@@ -278,7 +278,7 @@ else: run.function(shutil.move,'dwism.mif','dwirc.mif')
 
 # b0 normalisation
 if app.args.normalise:
-    print("...Beginning Normalisation")
+    print("...Beginning normalisation")
     if len(DWInlist) == 1:
         run.command('dwinormalise dwirc.mif CSFmask.nii dwinm.mif')
     else:
@@ -293,45 +293,43 @@ else: run.function(shutil.move,'dwirc.mif','dwinm.mif')
 
 run.command('mrconvert dwinm.mif dwi_designer.nii')
 
-if app.args.processing_only:
+if app.args.DTIparams or app.args.DKIparams or app.args.WMTIparams:
+    if not os.path.exists(path.fromUser(app.args.output, True)):
+        os.makedirs(path.fromUser(app.args.output, True))
+    shutil.copyfile(path.toTemp('dwi_designer.nii',True),path.fromUser(app.args.output + '/dwi_designer.nii', True))
+    shutil.copyfile(path.toTemp('dwi_designer.bvec',True),path.fromUser(app.args.output + '/dwi_designer.bvec', True))
+    shutil.copyfile(path.toTemp('dwi_designer.bval',True),path.fromUser(app.args.output + '/dwi_designer.bval', True))
+    
+    print("...Beginning tensor estimation")
+    os.chdir(designer_root)
+    eng = matlab.engine.start_matlab()
+
+    outliers=0
+    if app.args.outliers:
+        outliers=1
+    DTI=0
+    if app.args.DTIparams:
+        DTI=1
+    DKI=0
+    if app.args.DKIparams:
+        DKI=1
+    WMTI=0
+    if app.args.WMTIparams:
+        WMTI=1
+    constraints=0
+    if app.args.fit_constraints:
+        constraints=app.args.fit_constraints
+
+    eng.tensorfitting(path.toTemp('',True),path.fromUser(app.args.output, True),outliers,DTI,DKI,WMTI,constraints,DKI_root,nargout=0)
+    eng.quit()
+    app.gotoTempDir()
+else:
     if app.args.datatype:
         run.command('mrconvert -datatype ' + app.args.datatype + ' ' + path.toTemp('dwi_designer.nii',True) + ' ' + path.fromUser(app.args.output + '.nii',True))
     else:
         shutil.copyfile(path.toTemp('dwi_designer.nii',True),path.fromUser(app.args.output + '.nii',True))
     shutil.copyfile(path.toTemp('dwi_designer.bvec',True),path.fromUser(app.args.output + '.bvec',True))
     shutil.copyfile(path.toTemp('dwi_designer.bval',True),path.fromUser(app.args.output + '.bval',True))
-else:
-    if not os.path.exists(path.fromUser(app.args.output, True)):
-        os.makedirs(path.fromUser(app.args.output, True))
-    shutil.copyfile(path.toTemp('dwi_designer.nii',True),path.fromUser(app.args.output + '/dwi_designer.nii', True))
-    shutil.copyfile(path.toTemp('dwi_designer.bvec',True),path.fromUser(app.args.output + '/dwi_designer.bvec', True))
-    shutil.copyfile(path.toTemp('dwi_designer.bval',True),path.fromUser(app.args.output + '/dwi_designer.bval', True))
-
-if not app.args.processing_only:
-    print("...Beginning tensor estimation")
-    os.chdir(designer_root)
-    eng = matlab.engine.start_matlab()
-    if app.args.outliers:
-        outliers=1
-    else:
-        outliers=0
-    DTI=1
-#    if not app.args.DTIparams:
-#        DTI=0
-    DKI=1
-#    if not app.args.DKIparams:
-#        DKI=0
-    if app.args.WMTIparams:
-        WMTI=1
-    else:
-        WMTI=0
-    if app.args.fit_constraints:
-        constraints=app.args.fit_constraints
-    else:
-        constraints=0
-    eng.tensorfitting(path.toTemp('',True),path.fromUser(app.args.output, True),outliers,DTI,DKI,WMTI,constraints,DKI_root,nargout=0)
-    eng.quit()
-    app.gotoTempDir()
 
 
 app.complete()
