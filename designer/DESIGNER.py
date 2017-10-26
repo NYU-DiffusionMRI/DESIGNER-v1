@@ -42,7 +42,7 @@ app.cmdline.addCitation('','Zhang, Y.; Brady, M. & Smith, S. Segmentation of bra
 app.cmdline.addCitation('', 'Smith, S. M.; Jenkinson, M.; Woolrich, M. W.; Beckmann, C. F.; Behrens, T. E.; Johansen-Berg, H.; Bannister P. R.; De Luca, M.; Drobnjak, I.; Flitney, D. E.; Niazy, R. K.; Saunders, J.; Vickers, J.; Zhang, Y.; DeStefano, N.; Brady, J. M. & Matthews, P. M. Advances in functional and structural MR image analysis and implementation as FSL. NeuroImage, 2004,23, S208-S219',True)
 app.cmdline.addCitation('','Collier, Q., et al., Iterative reweighted linear least squares for accurate, fast, and robust estimation of diffusion magnetic resonance parameters. Magn Reson Med, 2015. 73(6): p. 2174-84.',True)
 app.cmdline.add_argument('input',  help='The input DWI series. For multiple input series, separate file names with commas (i.e. dwi1.nii,dwi2.nii,...)')
-app.cmdline.add_argument('output', help='The output directory (includes diffusion parameters and processed dwi) unless option -processing_only is used, in which case this is the output basename')
+app.cmdline.add_argument('output', help='The output directory (includes diffusion parameters, kurtosis parameters and processed dwi) unless option -processing_only is used, in which case this is the output basename')
 options = app.cmdline.add_argument_group('Other options for the DESIGNER script')
 options.add_argument('-denoise', action='store_true', help='Perform dwidenoise')
 options.add_argument('-extent', metavar=('size'), help='Denoising extent. Default is 5,5,5')
@@ -54,8 +54,8 @@ options.add_argument('-eddy', action='store_true', help='run fsl eddy (note that
 options.add_argument('-b1correct', action='store_true', help='Include a bias correction step in dwi preprocessing', default=False)
 options.add_argument('-normalise', action='store_true', help='normalize the dwi volume to median b0 CSF intensity of 1000 (useful for multiple dwi acquisitions)', default=False)
 options.add_argument('-smooth', metavar=('fwhm'), help='Include a (csf-free) smoothing step during dwi preprocessing. FWHM is usually 1.20 x voxel size')
-options.add_argument('-DTIparams', action='store_true', help='Include DTI parameters in output folder (md,ad,rd,fa,eigenvalues, eigenvectors')
-options.add_argument('-DKIparams', action='store_true', help='Include DKI parameters in output folder (mk,ak,rk)')
+#options.add_argument('-DTIparams', action='store_true', help='Include DTI parameters in output folder (md,ad,rd,fa,eigenvalues, eigenvectors')
+#options.add_argument('-DKIparams', action='store_true', help='Include DKI parameters in output folder (mk,ak,rk)')
 options.add_argument('-WMTIparams', action='store_true', help='Include DKI parameters in output folder (awf,ias_params,eas_params)')
 options.add_argument('-processing_only', action='store_true', help='output only the processed diffusion weighted image')
 options.add_argument('-datatype', metavar=('spec'), help='If using the "-processing_only" option, you can specify the output datatype. Valid options are float32, float32le, float32be, float64, float64le, float64be, int64, uint64, int64le, uint64le, int64be, uint64be, int32, uint32, int32le, uint32le, int32be, uint32be, int16, uint16, int16le, uint16le, int16be, uint16be, cfloat32, cfloat32le, cfloat32be, cfloat64, cfloat64le, cfloat64be, int8, uint8, bit')
@@ -316,11 +316,11 @@ if not app.args.processing_only:
     else:
         outliers=0
     DTI=1
-    if not app.args.DTIparams:
-        DTI=0
+#    if not app.args.DTIparams:
+#        DTI=0
     DKI=1
-    if not app.args.DKIparams:
-        DKI=0
+#    if not app.args.DKIparams:
+#        DKI=0
     if app.args.WMTIparams:
         WMTI=1
     else:
