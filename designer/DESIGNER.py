@@ -4,7 +4,7 @@
 import matlab.engine
 import os
 PATH = os.environ['PATH'].split(":")
-mrtrixbin = [s for s in PATH if "mrtrix3/bin" in s]
+mrtrixbin = [s for s in PATH if "mrtrix3" in s]
 if not mrtrixbin:
     print("cannot find path to mrtrix3, please make sure <path/to/mrtrix3/bin> is in your PATH")
     quit()
@@ -49,6 +49,7 @@ options.add_argument('-extent', metavar=('<size>'), help='Denoising extent. Defa
 options.add_argument('-degibbs', action='store_true', help='Perform Gibbs artifact correction')
 #options.add_argument('-degibbs', help='Perform Gibbs artifact correction. Input options are "fsl" or "matlab", depending pn which unringing executable is in your PATH')
 options.add_argument('-rician', metavar=('<b-value where SNR=2>'), help='Perform Rician bias correction')
+#options.add_argument('-rician', action=FooAction)
 options.add_argument('-prealign', action='store_true', help='If there are multiple input diffusion series, do rigid alignment prior to eddy to maximize motion correction performance')
 options.add_argument('-eddy', action='store_true', help='run fsl eddy (note that if you choose this command you must also choose a phase encoding option')
 options.add_argument('-b1correct', action='store_true', help='Include a bias correction step in dwi preprocessing', default=False)
@@ -68,7 +69,7 @@ rpe_options.add_argument('-rpe_all', metavar=('<reverse PE dwi volume>'), help='
 rpe_options.add_argument('-rpe_header', action='store_true', help='Specify that the phase-encoding information can be found in the image header(s), and that this is the information that the script should use')
 rpe_options.add_argument('-pe_dir', metavar=('<phase encoding direction>'), help='Specify the phase encoding direction of the input series (required if using the eddy option). Can be a signed axis number (e.g. -0, 1, +2), an axis designator (e.g. RL, PA, IS), or NIfTI axis codes (e.g. i-, j, k)')
 app.parse()
-
+print(app.args.rician)
 def splitext_(path):
     for ext in ['.tar.gz', '.tar.bz2','.nii.gz']:
         if path.endswith(ext):
