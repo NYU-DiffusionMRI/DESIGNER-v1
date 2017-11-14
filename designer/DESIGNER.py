@@ -48,7 +48,8 @@ options.add_argument('-denoise', action='store_true', help='Perform dwidenoise')
 options.add_argument('-extent', metavar=('<size>'), help='Denoising extent. Default is 5,5,5')
 options.add_argument('-degibbs', action='store_true', help='Perform Gibbs artifact correction')
 #options.add_argument('-degibbs', help='Perform Gibbs artifact correction. Input options are "fsl" or "matlab", depending pn which unringing executable is in your PATH')
-options.add_argument('-rician', metavar=('<b-value where SNR=2>'), help='Perform Rician bias correction')
+options.add_argument('-rician', action='store_true', help='Perform Rician bias correction')
+options.add_argument('-rician_lowsnr', metavar=('<b-value where SNR=2>'), help='Perform Rician bias correction specifying the b-value where snr<2')
 #options.add_argument('-rician', action=FooAction)
 options.add_argument('-prealign', action='store_true', help='If there are multiple input diffusion series, do rigid alignment prior to eddy to maximize motion correction performance')
 options.add_argument('-eddy', action='store_true', help='run fsl eddy (note that if you choose this command you must also choose a phase encoding option')
@@ -266,7 +267,14 @@ else: run.function(shutil.move,'dwibc.mif','dwism.mif')
 run.command('mrinfo -export_grad_fsl dwi_designer.bvec dwi_designer.bval dwism.mif')
 
 # rician bias correction
+if app.args.rician and app.args.rician_lowsnr:
+    app.args.rician = 0
 if app.args.rician:
+    print("...Beginning Rician correction")
+    run.command('dwidenoise -extent ' + extent + ' -noise - dwi.nii tmp.mif | mrcalc - -finite - 0 -if lowbnoisemap.mif')
+    file.delTempFile('tmp.mif')
+    run.command('mrcalc dwism.mif 2 -pow lowbnoisemap.mif 2 -pow -sub -abs -sqrt - | mrcalc - -finite - 0 -if dwirc.mif')
+elif app.args.rician_lowsnr:
     print("...Beginning Rician correction")
     bvalu = np.unique(np.around(bval, decimals=-1))
     lowbval = [i for i in bvalu if i<=np.int(app.args.rician)]
@@ -274,7 +282,7 @@ if app.args.rician:
     run.command('dwiextract -shell ' + lowbvalstr + ' dwi.mif dwilowb.mif')
     run.command('dwidenoise -extent ' + extent + ' -noise - dwilowb.mif tmp.mif | mrcalc - -finite - 0 -if lowbnoisemap.mif')
     file.delTempFile('tmp.mif')
-    run.command('mrcalc dwism.mif 2 -pow lowbnoisemap.mif 2 -pow -sub -abs -sqrt - | mrcalc - -finite - 0 -if dwirc.mif') # this line sometimes kills gradient info
+    run.command('mrcalc dwism.mif 2 -pow lowbnoisemap.mif 2 -pow -sub -abs -sqrt - | mrcalc - -finite - 0 -if dwirc.mif')
 else: run.function(shutil.move,'dwism.mif','dwirc.mif')
 
 # b0 normalisation
