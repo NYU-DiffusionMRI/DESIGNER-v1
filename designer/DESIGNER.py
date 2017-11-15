@@ -268,12 +268,16 @@ run.command('mrinfo -export_grad_fsl dwi_designer.bvec dwi_designer.bval dwism.m
 
 # rician bias correction
 if app.args.rician and app.args.rician_lowsnr:
+    print("...Choosing low snr Rician Bias correction")
     app.args.rician = 0
 if app.args.rician:
     print("...Beginning Rician correction")
-    run.command('dwidenoise -extent ' + extent + ' -noise - dwi.mif tmp.mif | mrcalc - -finite - 0 -if lowbnoisemap.mif')
-    file.delTempFile('tmp.mif')
-    run.command('mrcalc dwism.mif 2 -pow lowbnoisemap.mif 2 -pow -sub -abs -sqrt - | mrcalc - -finite - 0 -if dwirc.mif')
+    if app.args.denoise:
+        run.command('mrcalc dwism.mif 2 -pow fullnoisemap.mif 2 -pow -sub -abs -sqrt - | mrcalc - -finite - 0 -if dwirc.mif')
+    else:
+        run.command('dwidenoise -extent ' + extent + ' -noise - dwi.mif tmp.mif | mrcalc - -finite - 0 -if lowbnoisemap.mif')
+        file.delTempFile('tmp.mif')
+        run.command('mrcalc dwism.mif 2 -pow lowbnoisemap.mif 2 -pow -sub -abs -sqrt - | mrcalc - -finite - 0 -if dwirc.mif')
 elif app.args.rician_lowsnr:
     print("...Beginning Rician correction")
     bvalu = np.unique(np.around(bval, decimals=-1))
