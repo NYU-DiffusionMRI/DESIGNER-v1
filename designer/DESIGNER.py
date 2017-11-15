@@ -273,7 +273,8 @@ if app.args.rician and app.args.rician_lowsnr:
 if app.args.rician:
     print("...Beginning Rician correction")
     if app.args.denoise:
-        run.command('mrcalc dwism.mif 2 -pow fullnoisemap.mif 2 -pow -sub -abs -sqrt - | mrcalc - -finite - 0 -if dwirc.mif')
+        run.command('mrcalc fullnoisemap.mif -finite fullnoisemap.mif 0 -if lowbnoisemap.mif')
+        run.command('mrcalc dwism.mif 2 -pow lowbnoisemap.mif 2 -pow -sub -abs -sqrt - | mrcalc - -finite - 0 -if dwirc.mif')
     else:
         run.command('dwidenoise -extent ' + extent + ' -noise - dwi.mif tmp.mif | mrcalc - -finite - 0 -if lowbnoisemap.mif')
         file.delTempFile('tmp.mif')
