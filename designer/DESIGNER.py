@@ -282,7 +282,7 @@ if app.args.rician:
 elif app.args.rician_lowsnr:
     print("...Beginning Rician correction")
     bvalu = np.unique(np.around(bval, decimals=-1))
-    lowbval = [i for i in bvalu if i<=np.int(app.args.rician)]
+    lowbval = [i for i in bvalu if i<=np.int(app.args.rician_lowsnr)]
     lowbvalstr = ','.join(str(i) for i in lowbval)
     run.command('dwiextract -shell ' + lowbvalstr + ' dwi.mif dwilowb.mif')
     run.command('dwidenoise -extent ' + extent + ' -noise - dwilowb.mif tmp.mif | mrcalc - -finite - 0 -if lowbnoisemap.mif')
