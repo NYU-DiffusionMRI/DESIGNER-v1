@@ -71,7 +71,7 @@ rpe_options.add_argument('-rpe_all', metavar=('<reverse PE dwi volume>'), help='
 rpe_options.add_argument('-rpe_header', action='store_true', help='Specify that the phase-encoding information can be found in the image header(s), and that this is the information that the script should use')
 rpe_options.add_argument('-pe_dir', metavar=('<phase encoding direction>'), help='Specify the phase encoding direction of the input series (required if using the eddy option). Can be a signed axis number (e.g. -0, 1, +2), an axis designator (e.g. RL, PA, IS), or NIfTI axis codes (e.g. i-, j, k)')
 app.parse()
-print(app.args.rician)
+
 def splitext_(path):
     for ext in ['.tar.gz', '.tar.bz2','.nii.gz']:
         if path.endswith(ext):

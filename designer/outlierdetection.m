@@ -3,11 +3,10 @@ function akc_out = outlierdetection(dt)
         mask = ~isnan(dt(:,:,:,1));
     end
     dt = vec(dt, mask);
-    dir = importdata('dirs30.txt')
+    dir = importdata('dirs15.txt');
     [akc, adc] = AKC(dt, dir);
     akc_out = single(any(akc < -2 | akc > 10, 1));
     if exist('mask','var'), akc_out = vec(akc_out, mask); end
-	size(akc_out)
 end
 
 function [akc, adc] = AKC(dt, dir)
