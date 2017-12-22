@@ -59,6 +59,7 @@ options.add_argument('-smooth', metavar=('<fwhm>'), help='Include a (csf-free) s
 options.add_argument('-DTIparams', action='store_true', help='Include DTI parameters in output folder (md,ad,rd,fa,eigenvalues, eigenvectors')
 options.add_argument('-DKIparams', action='store_true', help='Include DKI parameters in output folder (mk,ak,rk)')
 options.add_argument('-WMTIparams', action='store_true', help='Include DKI parameters in output folder (awf,ias_params,eas_params)')
+options.add_argument('-akc', action='store_true', help='brute force K tensor outlier rejection')
 #options.add_argument('-processing_only', action='store_true', help='output only the processed diffusion weighted image')
 options.add_argument('-datatype', metavar=('<spec>'), help='If using the "-processing_only" option, you can specify the output datatype. Valid options are float32, float32le, float32be, float64, float64le, float64be, int64, uint64, int64le, uint64le, int64be, uint64be, int32, uint32, int32le, uint32le, int32be, uint32be, int16, uint16, int16le, uint16le, int16be, uint16be, cfloat32, cfloat32le, cfloat32be, cfloat64, cfloat64le, cfloat64be, int8, uint8, bit')
 options.add_argument('-fit_constraints',help='constrain the wlls fit (default 0,1,0)')
@@ -333,8 +334,11 @@ if app.args.DTIparams or app.args.DKIparams or app.args.WMTIparams:
     constraints=0
     if app.args.fit_constraints:
         constraints=app.args.fit_constraints
+    AKC=0
+    if app.args.akc:
+        AKC=1
 
-    eng.tensorfitting(path.toTemp('',True),path.fromUser(app.args.output, True),outliers,DTI,DKI,WMTI,constraints,DKI_root,nargout=0)
+    eng.tensorfitting(path.toTemp('',True),path.fromUser(app.args.output, True),outliers,DTI,DKI,WMTI,constraints,AKC,DKI_root,nargout=0)
     eng.quit()
     app.gotoTempDir()
 else:

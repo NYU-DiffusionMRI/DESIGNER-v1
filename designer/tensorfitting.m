@@ -1,4 +1,4 @@
-function tensorfitting(root,outdir,detectoutliers,dti,dki,wmti,fitconstraints,DKIroot)
+function tensorfitting(root,outdir,detectoutliers,dti,dki,wmti,fitconstraints,akc,DKIroot)
 addpath(genpath(DKIroot));
 
 nii = load_untouch_nii(fullfile(root,'brain_mask.nii')); mask = logical(nii.img);
@@ -11,31 +11,65 @@ bval = textread(fullfile(root,bvaldir)); bval = bval(:, 1:ndwis)'; bval = bval./
 bvec = textread(fullfile(root,bvecdir)); bvec = bvec(:, 1:ndwis)';
 maxbval = max(bval);
 
+%f = find(bval~=.25)
+%dwi = dwi(:,:,:,f);
+%bvec = bvec(f,:);
+%bval = bval(f);
+
 detectoutliers = logical(detectoutliers);
 dti = logical(dti);
 dki = logical(dki);
 wmti = logical(wmti);
+akc = logical(akc);
 if ischar(fitconstraints)
-    fitconstraints = str2double(fitconstraints);
+    conts = split(fitconstraints,',');
+    constraints(1) = str2double(conts(1));
+    constraints(2) = str2double(conts(2));
+    constraints(3) = str2double(conts(3));
 end
 
 if detectoutliers
+    disp('...running IRWLLS')
     options.Excludeb0 = 0;
     outliers = irlls(dwi,mask,bvec,bval,[],options);
-    if ~fitconstraints
+    nii.hdr.dime.dim(1) = 4;
+    nii.hdr.dime.dim(5) = ndwis;
+    nii.hdr.dime.pixdim(5) = pixdim5;  
+    nii.img = outliers;  save_untouch_nii(nii,fullfile(root,'irwlls_out.nii'));
+    if sum(constraints) == 0
         [b0,dt] = dki_fit(dwi,[bvec,bval],mask,[0,1,0],outliers,maxbval);
     else
-        [b0,dt] = dki_fit(dwi,[bvec,bval],mask,fitconstraints,outliers,maxbval);
+	disp('...running constrained fit')
+        [b0,dt] = dki_fit(dwi,[bvec,bval],mask,constraints,outliers,maxbval);
     end
 else
-    if ~fitconstraints
+    if sum(constraints) == 0
         [b0,dt] = dki_fit(dwi,[bvec,bval],mask,[0,1,0],[],maxbval);
     else
-[b0,dt] = dki_fit(dwi,[bvec,bval],mask,fitconstraints,[],maxbval);
+	disp('...running constrained fit')
+	[b0,dt] = dki_fit(dwi,[bvec,bval],mask,constraints,[],maxbval);
     end
 end
 
 [fa, md, rd, ad, fe, mk, rk, ak] = dki_parameters(dt,mask);
+if akc
+    akc_out = outlierdetection(dt);
+    [fa, ~] = repnan(fa, mask, akc_out);
+    [md, ~] = repnan(md, mask, akc_out);
+    [rd, ~] = repnan(rd, mask, akc_out);
+    [ad, ~] = repnan(ad, mask, akc_out);
+    [fe(:,:,:,1), ~] = repnan(fe(:,:,:,1), mask, akc_out);
+    [fe(:,:,:,2), ~] = repnan(fe(:,:,:,2), mask, akc_out);
+    [fe(:,:,:,3), ~] = repnan(fe(:,:,:,3), mask, akc_out);
+    [mk, ~] = repnan(mk, mask, akc_out);
+    [rk, ~] = repnan(rk, mask, akc_out);
+    [ak, ~] = repnan(ak, mask, akc_out);
+    nii.hdr.dime.dim(1) = 3;
+    nii.hdr.dime.dim(5) = 1;
+    nii.hdr.dime.pixdim(5) = 0;
+    nii.img = akc_out;
+    save_untouch_nii(nii,fullfile(root,'akc_out.nii'));
+end
 
 if dti
     nii.hdr.dime.dim(1) = 3;
@@ -67,16 +101,25 @@ if wmti
     nii.hdr.dime.dim(5) = 1;
     nii.hdr.dime.pixdim(5) = 0;
     [awf, eas, ias] = wmti_parameters(dt, mask);
+    if akc
+        [awf, ~] = repnan(awf, mask, akc_out);
+    end
     nii.img = awf; nii.hdr.dime.glmax = max(awf(:)); save_untouch_nii(nii,fullfile(outdir,'awf.nii'));
     fields = fieldnames(ias);
     for ii=1:numel(fields)
         paramsii = getfield(ias, fields{ii});
+	if akc
+            [paramsii, ~] = repnan(paramsii, mask, akc_out);
+        end
         savename = fullfile(outdir, ['ias_', fields{ii}, '.nii']);
         nii.img = paramsii; nii.hdr.dime.glmax = max(paramsii(:)); save_untouch_nii(nii,savename);
     end
     fields = fieldnames(eas);
     for ii=1:numel(fields)
         paramsii = getfield(eas, fields{ii});
+	if akc
+            [paramsii, ~] = repnan(paramsii, mask, akc_out);
+        end
         savename = fullfile(outdir, ['eas_', fields{ii}, '.nii']);
         nii.img = paramsii; nii.hdr.dime.glmax = max(paramsii(:)); save_untouch_nii(nii,savename);
     end
