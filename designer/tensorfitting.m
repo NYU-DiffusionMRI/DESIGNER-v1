@@ -26,6 +26,8 @@ if ischar(fitconstraints)
     constraints(1) = str2double(conts(1));
     constraints(2) = str2double(conts(2));
     constraints(3) = str2double(conts(3));
+else
+    constraints = 0;
 end
 
 if detectoutliers
