@@ -1,5 +1,5 @@
 #!/usr/bin/env python
- 
+
 # script that runs DESIGNER
 import matlab.engine
 import os
@@ -10,7 +10,7 @@ if not mrtrixbin:
     quit()
 mrtrixlib = "".join(mrtrixbin)[:-3]+'lib'
 
-import inspect, sys, numpy as np, shutil, math, gzip
+import inspect, sys, numpy as np, math, gzip, shutil
 from distutils.spawn import find_executable
 sys.path.insert(0, mrtrixlib)
 from mrtrix3 import app, file, fsl, image, path, phaseEncoding, run
@@ -139,60 +139,44 @@ if app.args.extent:
 	extent = app.args.extent
 else: extent = '5,5,5'
 
+run.command('mrconvert dwi.mif working.mif')
+
 # denoising
 if app.args.denoise:
     print("...Beginning denoising")
-    run.command('dwidenoise -extent ' + extent + ' -noise fullnoisemap.mif dwi.mif dwidn.mif')
-else: run.function(shutil.copy,'dwi.mif','dwidn.mif')
+    run.command('dwidenoise -extent ' + extent + ' -noise fullnoisemap.mif working.mif dwidn.mif')
+    run.function(os.remove,'working.mif')
+    run.command('mrconvert dwidn.mif working.mif')
 
 # gibbs artifact correction
 if app.args.degibbs:
     print("...Beginning degibbsing")
-#    run.command('mrconvert -export_grad_mrtrix grad.txt dwidn.mif dwidn.nii')
-#    if app.args.degibbs == 'matlab':
-#        unringbin = [s for s in PATH if "unring/matlab" in s]
-#        if not unringbin:
-#            print("cannot find path to unring, please make sure <path/to/unring> or <path/to/unring.m> is in your PATH")
-#            quit()
-#        unringbin = "".join(unringbin)
-#        os.chdir(designer_root)
-#        eng = matlab.engine.start_matlab()
-#        eng.rungibbscorrection(unringbin,path.toTemp('',True),DKI_root,nargout=0)
-#        eng.quit()
-#        app.gotoTempDir()
-#        run.command('mrconvert -grad grad.txt dwigc.nii dwigc.mif')
-#        file.delTempFile('dwigc.nii')
-#    if app.args.degibbs == 'fsl':
-#        run.command('unring dwidn.nii dwigc' + fsl_suffix + ' -minW 1 -maxW 3 -nsh 20')
-#        run.command('mrconvert -grad grad.txt dwigc' + fsl_suffix + ' dwigc.mif')
-#        file.delTempFile('dwigc' + fsl_suffix)
-#    file.delTempFile('dwidn.nii')
-    run.command('mrdegibbs -nshifts 20 -minW 1 -maxW 3 dwidn.mif dwigc.mif')
-else: run.function(shutil.move,'dwidn.mif','dwigc.mif')
+    run.command('mrdegibbs -nshifts 20 -minW 1 -maxW 3 working.mif dwigc.mif')
+    run.function(os.remove,'working.mif')
+    run.command('mrconvert dwigc.mif working.mif')
 
 # pre-eddy alignment for multiple input series
 if app.args.prealign:
-	if len(DWInlist) == 1:
-		shutil.copyfile('dwigc.mif','dwitf.mif')
-	else:
+	if len(DWInlist) != 1:
 		miflist = []
 		for idx,i in enumerate(DWInlist):
-			run.command('mrconvert -coord 3 ' + idxlist[idx] + ' dwigc.mif dwigc' + str(idx) + '.mif')
-			run.command('dwiextract -bzero dwigc' + str(idx) + '.mif - | mrconvert -coord 3 0 - b0gc' + str(idx) + '.mif')
+			run.command('mrconvert -coord 3 ' + idxlist[idx] + ' working.mif dwipretf' + str(idx) + '.mif')
+			run.command('dwiextract -bzero dwipretf' + str(idx) + '.mif - | mrconvert -coord 3 0 - b0pretf' + str(idx) + '.mif')
 			if idx > 0:
-				run.command('mrregister -type rigid -noreorientation -rigid rigidXform' + str(idx) + 'to0.txt b0gc' + str(idx) + '.mif b0gc0.mif')
-				run.command('mrtransform -linear rigidXform' + str(idx) + 'to0.txt dwigc' + str(idx) + '.mif dwitf' + str(idx) + '.mif')
+				run.command('mrregister -type rigid -noreorientation -rigid rigidXform' + str(idx) + 'to0.txt b0pretf' + str(idx) + '.mif b0tf0.mif')
+				run.command('mrtransform -linear rigidXform' + str(idx) + 'to0.txt dwipretf' + str(idx) + '.mif dwitf' + str(idx) + '.mif')
 				miflist.append('dwitf' + str(idx) + '.mif')
 		DWImif = ' '.join(miflist)
-		run.command('mrcat -axis 3 dwigc0.mif ' + DWImif + ' dwitf.mif')
-else: run.function(shutil.move,'dwigc.mif','dwitf.mif')
+		run.command('mrcat -axis 3 dwitf0.mif ' + DWImif + ' dwitf.mif')
+        run.function(os.remove,'working.mif')
+        run.command('mrconvert dwitf.mif working.mif')
 
 # epi + eddy current and motion correction
 # if number of input volumes is greater than 1, make a new acqp and index file.
 if app.args.eddy:
     print("...Beginning EDDY")
     if app.args.rpe_none:
-        run.command('dwipreproc -eddy_options " --repol --data_is_shelled" -rpe_none -pe_dir ' + app.args.pe_dir + ' dwitf.mif dwiec.mif')
+        run.command('dwipreproc -eddy_options " --repol --data_is_shelled" -rpe_none -pe_dir ' + app.args.pe_dir + ' working.mif dwiec.mif')
     elif app.args.rpe_pair:
         run.command('dwiextract -bzero dwi.mif - | mrconvert -coord 3 0 - b0pe.mif')
         rpe_size = [ int(s) for s in image.headerField(path.fromUser(app.args.rpe_pair,True), 'size').split() ]
@@ -200,50 +184,52 @@ if app.args.eddy:
             run.command('mrconvert -coord 3 0 ' + path.fromUser(app.args.rpe_pair,True) + ' b0rpe.mif')
         else: run.command('mrconvert ' + path.fromUser(app.args.rpe_pair,True) + ' b0rpe.mif')
         run.command('mrcat -axis 3 b0pe.mif b0rpe.mif rpepair.mif')
-        run.command('dwipreproc -eddy_options " --repol --data_is_shelled" -rpe_pair -se_epi rpepair.mif -pe_dir ' + app.args.pe_dir + ' dwitf.mif dwiec.mif')
+        run.command('dwipreproc -eddy_options " --repol --data_is_shelled" -rpe_pair -se_epi rpepair.mif -pe_dir ' + app.args.pe_dir + ' working.mif dwiec.mif')
     elif app.args.rpe_all:
         run.command('mrconvert -export_grad_mrtrix grad.txt dwi.mif tmp.mif')
         run.command('mrconvert -grad grad.txt ' + path.fromUser(app.args.rpe_all,True) + ' dwirpe.mif')
-        run.command('mrcat -axis 3 dwitf.mif dwirpe.mif dwipe_rpe.mif')
+        run.command('mrcat -axis 3 working.mif dwirpe.mif dwipe_rpe.mif')
         run.command('dwipreproc -eddy_options " --repol --data_is_shelled" -rpe_all -pe_dir ' + app.args.pe_dir + ' dwipe_rpe.mif dwiec.mif')
-        file.delTempFile('tmp.mif')
+        run.function(os.remove,'tmp.mif')
     elif app.args.rpe_header:
         run.command('dwipreproc -eddy_options " --repol --data_is_shelled" -rpe_header dwipe_rpe.mif dwiec.mif')
     elif not app.args.rpe_header and not app.args.rpe_all and not app.args.rpe_pair:
         print("the eddy option must run alongside -rpe_header, -rpe_all, or -rpe_pair option")
         quit()
-else: run.function(shutil.move,'dwitf.mif','dwiec.mif')
+    run.function(os.remove,'working.mif')
+    run.command('mrconvert dwiec.mif working.mif')
 
 # b1 bias field correction
 if app.args.b1correct:
     print("...Beginning B1 correction")
     if len(DWInlist) == 1:
-        run.command('dwibiascorrect -fsl dwiec.mif dwibc.mif')
+        run.command('dwibiascorrect -fsl working.mif dwibc.mif')
     else:
-        # note that b1 correction may still need to be done individually for each diffusion series ...
+        # b1 correction may still need to be done individually for each diffusion series ...
         miflist = []
         for idx,i in enumerate(DWInlist):
-            run.command('mrconvert -coord 3 ' + idxlist[idx] + ' dwiec.mif dwiec' + str(idx) + '.mif')
-            run.command('dwibiascorrect -fsl dwiec' + str(idx) + '.mif dwibc' + str(idx) + '.mif')
+            run.command('mrconvert -coord 3 ' + idxlist[idx] + ' working.mif dwiprebc' + str(idx) + '.mif')
+            run.command('dwibiascorrect -fsl dwiprebc' + str(idx) + '.mif dwibc' + str(idx) + '.mif')
             miflist.append('dwibc' + str(idx) + '.mif')
             DWImif = ' '.join(miflist)
         run.command('mrcat -axis 3 ' + DWImif + ' dwibc.mif')
-else: run.function(shutil.move,'dwiec.mif','dwibc.mif')
+    run.function(os.remove,'working.mif')
+    run.command('mrconvert dwibc.mif working.mif')
 
 # generate a final brainmask
 print("...Computing brain mask")
-run.command('dwiextract -bzero dwibc.mif - | mrmath -axis 3 - mean b0bc.nii')
+run.command('dwiextract -bzero working.mif - | mrmath -axis 3 - mean b0bc.nii')
 # run.command('dwi2mask dwibc.mif - | maskfilter - dilate brain_mask.nii')
 # run.command('fslmaths b0bc.nii -mas brain_mask.nii brain')
 run.command('bet b0bc.nii brain' + fsl_suffix + ' -m -f 0.25')
 if os.path.isfile('brain_mask.nii.gz'):
     with gzip.open('brain_mask' + fsl_suffix, 'rb') as f_in, open('brain_mask.nii', 'wb') as f_out:
         shutil.copyfileobj(f_in, f_out)
-    file.delTempFile('brain_mask' + fsl_suffix)
+    run.function(os.remove,'brain_mask' + fsl_suffix)
 
 if app.args.smooth or app.args.normalise:
     print("...Computing CSF mask")
-    run.command('mrconvert -force -export_grad_mrtrix grad.txt dwibc.mif dwibc.nii')
+    run.command('mrconvert -force -export_grad_mrtrix grad.txt working.mif dwibc.nii')
     run.command('fast -n 4 -t 2 -o tissue brain' + fsl_suffix)
     csfclass = []
     for i in range(4):
@@ -263,9 +249,10 @@ if app.args.smooth:
     eng.quit()
     app.gotoTempDir()
     run.command('mrconvert -grad grad.txt dwism.nii dwism.mif')
-else: run.function(shutil.move,'dwibc.mif','dwism.mif')
+    run.function(os.remove,'working.mif')
+    run.command('mrconvert dwism.mif working.mif')
 
-run.command('mrinfo -export_grad_fsl dwi_designer.bvec dwi_designer.bval dwism.mif')
+run.command('mrinfo -export_grad_fsl dwi_designer.bvec dwi_designer.bval working.mif')
 
 # rician bias correction
 if app.args.rician and app.args.rician_lowsnr:
@@ -275,11 +262,13 @@ if app.args.rician:
     print("...Beginning Rician correction")
     if app.args.denoise:
         run.command('mrcalc fullnoisemap.mif -finite fullnoisemap.mif 0 -if lowbnoisemap.mif')
-        run.command('mrcalc dwism.mif 2 -pow lowbnoisemap.mif 2 -pow -sub -abs -sqrt - | mrcalc - -finite - 0 -if dwirc.mif')
+        run.command('mrcalc working.mif 2 -pow lowbnoisemap.mif 2 -pow -sub -abs -sqrt - | mrcalc - -finite - 0 -if dwirc.mif')
     else:
         run.command('dwidenoise -extent ' + extent + ' -noise - dwi.mif tmp.mif | mrcalc - -finite - 0 -if lowbnoisemap.mif')
-        file.delTempFile('tmp.mif')
-        run.command('mrcalc dwism.mif 2 -pow lowbnoisemap.mif 2 -pow -sub -abs -sqrt - | mrcalc - -finite - 0 -if dwirc.mif')
+        run.function(os.remove,'tmp.mif')
+        run.command('mrcalc working.mif 2 -pow lowbnoisemap.mif 2 -pow -sub -abs -sqrt - | mrcalc - -finite - 0 -if dwirc.mif')
+    run.function(os.remove,'working.mif')
+    run.command('mrconvert dwirc.mif working.mif')
 elif app.args.rician_lowsnr:
     print("...Beginning Rician correction")
     bvalu = np.unique(np.around(bval, decimals=-1))
@@ -287,26 +276,29 @@ elif app.args.rician_lowsnr:
     lowbvalstr = ','.join(str(i) for i in lowbval)
     run.command('dwiextract -shell ' + lowbvalstr + ' dwi.mif dwilowb.mif')
     run.command('dwidenoise -extent ' + extent + ' -noise - dwilowb.mif tmp.mif | mrcalc - -finite - 0 -if lowbnoisemap.mif')
-    file.delTempFile('tmp.mif')
-    run.command('mrcalc dwism.mif 2 -pow lowbnoisemap.mif 2 -pow -sub -abs -sqrt - | mrcalc - -finite - 0 -if dwirc.mif')
-else: run.function(shutil.move,'dwism.mif','dwirc.mif')
+    run.function(os.remove,'tmp.mif')
+    run.command('mrcalc working.mif 2 -pow lowbnoisemap.mif 2 -pow -sub -abs -sqrt - | mrcalc - -finite - 0 -if dwirc.mif')
+    run.function(os.remove,'working.mif')
+    run.command('mrconvert dwirc.mif working.mif')
 
 # b0 normalisation
 if app.args.normalise:
     print("...Beginning normalisation")
     if len(DWInlist) == 1:
-        run.command('dwinormalise dwirc.mif CSFmask.nii dwinm.mif')
+        run.command('dwinormalise working.mif CSFmask.nii dwinm.mif')
     else:
         miflist = []
         for idx,i in enumerate(DWInlist):
-            run.command('mrconvert -coord 3 ' + idxlist[idx] + ' dwirc.mif dwirc' + str(idx) + '.mif')
-            run.command('dwinormalise dwirc' + str(idx) + '.mif CSFmask.nii dwinm' + str(idx) + '.mif')
+            run.command('mrconvert -coord 3 ' + idxlist[idx] + ' working.mif dwiprenm' + str(idx) + '.mif')
+            run.command('dwinormalise dwiprenm' + str(idx) + '.mif CSFmask.nii dwinm' + str(idx) + '.mif')
             miflist.append('dwinm' + str(idx) + '.mif')
             DWImif = ' '.join(miflist)
         run.command('mrcat -axis 3 ' + DWImif + ' dwinm.mif')
-else: run.function(shutil.move,'dwirc.mif','dwinm.mif')
+    run.function(os.remove,'working.mif')
+    run.command('mrconvert dwinm.mif working.mif')
 
-run.command('mrconvert dwinm.mif dwi_designer.nii')
+run.command('mrconvert working.mif dwi_designer.nii')
+run.function(os.remove,'working.mif')
 
 if app.args.DTIparams or app.args.DKIparams or app.args.WMTIparams:
     if not os.path.exists(path.fromUser(app.args.output, True)):
