@@ -1,4 +1,15 @@
 function tensorfitting(root,outdir,detectoutliers,dti,dki,wmti,fitconstraints,akc,DKIroot)
+cd ~/Dropbox
+root='processing_otl';
+outdir='parameters_otl';
+detectoutliers=1;
+dti=1;
+dki=1;
+wmti=1;
+fitconstraints='0,1,0';
+akc=1;
+DKIroot='/Users/Ben/Documents/NYU-DiffusionMRI/DIffusion-Kurtosis-Imaging';
+
 addpath(genpath(DKIroot));
 
 nii = load_untouch_nii(fullfile(root,'brain_mask.nii')); mask = logical(nii.img);
@@ -53,25 +64,24 @@ else
     end
 end
 
-[fa, md, rd, ad, fe, mk, rk, ak] = dki_parameters(dt,mask);
 if akc
     akc_out = outlierdetection(dt);
-    [fa, ~] = repnan(fa, mask, akc_out);
-    [md, ~] = repnan(md, mask, akc_out);
-    [rd, ~] = repnan(rd, mask, akc_out);
-    [ad, ~] = repnan(ad, mask, akc_out);
-    [fe(:,:,:,1), ~] = repnan(fe(:,:,:,1), mask, akc_out);
-    [fe(:,:,:,2), ~] = repnan(fe(:,:,:,2), mask, akc_out);
-    [fe(:,:,:,3), ~] = repnan(fe(:,:,:,3), mask, akc_out);
-    [mk, ~] = repnan(mk, mask, akc_out);
-    [rk, ~] = repnan(rk, mask, akc_out);
-    [ak, ~] = repnan(ak, mask, akc_out);
+    akc_out(isnan(akc_out)) = 0;
+    for v = 1:size(dt,4)
+        dt_v = dt(:,:,:,v);
+        dt_v(logical(akc_out)) = NaN;
+        dt_f = fillmissing(dt_v,'movmedian',5);
+        dt(:,:,:,v) = dt_f;
+    end
+
     nii.hdr.dime.dim(1) = 3;
     nii.hdr.dime.dim(5) = 1;
     nii.hdr.dime.pixdim(5) = 0;
     nii.img = akc_out;
     save_untouch_nii(nii,fullfile(root,'akc_out.nii'));
 end
+
+[fa, md, rd, ad, fe, mk, rk, ak] = dki_parameters(dt,mask);
 
 if dti
     nii.hdr.dime.dim(1) = 3;
@@ -103,25 +113,16 @@ if wmti
     nii.hdr.dime.dim(5) = 1;
     nii.hdr.dime.pixdim(5) = 0;
     [awf, eas, ias] = wmti_parameters(dt, mask);
-    if akc
-        [awf, ~] = repnan(awf, mask, akc_out);
-    end
     nii.img = awf; nii.hdr.dime.glmax = max(awf(:)); save_untouch_nii(nii,fullfile(outdir,'awf.nii'));
     fields = fieldnames(ias);
     for ii=1:numel(fields)
         paramsii = getfield(ias, fields{ii});
-	if akc
-            [paramsii, ~] = repnan(paramsii, mask, akc_out);
-        end
         savename = fullfile(outdir, ['ias_', fields{ii}, '.nii']);
         nii.img = paramsii; nii.hdr.dime.glmax = max(paramsii(:)); save_untouch_nii(nii,savename);
     end
     fields = fieldnames(eas);
     for ii=1:numel(fields)
         paramsii = getfield(eas, fields{ii});
-	if akc
-            [paramsii, ~] = repnan(paramsii, mask, akc_out);
-        end
         savename = fullfile(outdir, ['eas_', fields{ii}, '.nii']);
         nii.img = paramsii; nii.hdr.dime.glmax = max(paramsii(:)); save_untouch_nii(nii,savename);
     end
