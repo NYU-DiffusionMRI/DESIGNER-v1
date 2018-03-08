@@ -1,15 +1,4 @@
 function tensorfitting(root,outdir,detectoutliers,dti,dki,wmti,fitconstraints,akc,DKIroot)
-cd ~/Dropbox
-root='processing_otl';
-outdir='parameters_otl';
-detectoutliers=1;
-dti=1;
-dki=1;
-wmti=1;
-fitconstraints='0,1,0';
-akc=1;
-DKIroot='/Users/Ben/Documents/NYU-DiffusionMRI/DIffusion-Kurtosis-Imaging';
-
 addpath(genpath(DKIroot));
 
 nii = load_untouch_nii(fullfile(root,'brain_mask.nii')); mask = logical(nii.img);
