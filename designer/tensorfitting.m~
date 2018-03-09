@@ -1,4 +1,16 @@
 function tensorfitting(root,outdir,detectoutliers,dti,dki,wmti,fitconstraints,akc,DKIroot)
+cd /Volumes/Research/fieree01lab/labspace/Projects/KevinChan/Feb2018/P_002
+root='processing_sm';
+outdir='processing_sm/params_sm_otl_constrained';
+mkdir(outdir)
+detectoutliers=1;
+dti=1;
+dki=1;
+wmti=1;
+fitconstraints='1,1,1';
+akc=1;
+DKIroot='/Users/Ben/Documents/NYU-DiffusionMRI/Diffusion-Kurtosis-Imaging';
+
 addpath(genpath(DKIroot));
 
 nii = load_untouch_nii(fullfile(root,'brain_mask.nii')); mask = logical(nii.img);
@@ -24,8 +36,7 @@ if ischar(fitconstraints)
 else
     constraints = 0;
 end
-
-if detectoutliers
+sum(isinf(dwi(:)if detectoutliers
     disp('...running IRWLLS')
     options.Excludeb0 = 0;
     outliers = irlls(dwi,mask,bvec,bval,[],options);
@@ -57,11 +68,7 @@ if akc
     for v = 1:size(dt,4)
         dt_v = dt(:,:,:,v);
         dt_v(logical(akc_out)) = NaN;
-        if verLessThan('matlab','9.2')
-            dt_f = fillmissing(dt_v,'spline');
-        else
-            dt_f = fillmissing(dt_v,'movmedian',5);
-        end
+        dt_f = fillmissing(dt_v,'movmedian',5);
         dt(:,:,:,v) = dt_f;
     end
 
