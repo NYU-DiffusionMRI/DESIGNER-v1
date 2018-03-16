@@ -297,7 +297,7 @@ if app.args.normalise:
     run.function(os.remove,'working.mif')
     run.command('mrconvert dwinm.mif working.mif')
 
-run.command('mrconvert working.mif dwi_designer.nii')
+run.command('mrconvert -force -datatype float32le working.mif dwi_designer.nii')
 run.function(os.remove,'working.mif')
 
 if app.args.DTIparams or app.args.DKIparams or app.args.WMTIparams:
