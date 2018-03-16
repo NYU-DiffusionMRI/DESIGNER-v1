@@ -72,42 +72,6 @@ if akc
     save_untouch_nii(nii,fullfile(root,'akc_out.nii'));
 end
 
-% try
-% if smooth
-%     disp('...smoothing?')
-%     [dt, mask] = vec(dt); 
-%     b0 = vec(b0,mask);
-%     grad = [bvec,bval];
-%     D_apprSq = (sum(dt([1 4 6],:),1)/3).^2;
-%     dt(7:21,:) = dt(7:21,:) .* D_apprSq(ones(15,1),:);
-%     normgrad = sqrt(sum(grad(:, 1:3).^2, 2)); 
-%     normgrad(normgrad == 0) = 1;
-%     grad(:, 1:3) = grad(:, 1:3)./repmat(normgrad, [1 3]);
-%     bsqd6 = grad(:, 4).^2 * ones(1,15)/6;
-%     s = size(grad);
-%     ind = [1,1;1,2;1,3;2,2;2,3;3,3];
-%     cnt = [1,2,2,1,2,1];
-%     W_ind = [1 1 1 1; 1 1 1 2; 1 1 1 3; 1 1 2 2; 1 1 2 3;
-%     1 1 3 3; 1 2 2 2; 1 2 2 3; 1 2 3 3; 1 3 3 3;
-%     2 2 2 2; 2 2 2 3; 2 2 3 3; 2 3 3 3; 3 3 3 3];
-%     W_cnt = [1 4 4 6 12 6 4 12 12 4 1 4 6 4 1];
-%     b = ones([s(1) 1],class(grad))-(grad(:,ones(1,6)*4).*grad(:,ind(1:6,1)).*grad(:,ind(1:6,2)))*diag(cnt);
-%     b = [b, (bsqd6 .* prod(reshape(grad(:,W_ind),[],15,4),3))*diag(W_cnt)];
-%     dwi = exp(b*dt);
-%     dwi = vec(dwi,mask); 
-%     kernelsize = [5 5];
-%     width = str2double('1.25');
-%     dwi = smoothing(dwi,kernelsize,width,csf);
-%     if sum(constraints) == 0
-%         [b0,dt] = dki_fit(dwi,[bvec,bval],mask,[0,1,0],[],maxbval);
-%     else
-%         [b0,dt] = dki_fit(dwi,[bvec,bval],mask,constraints,[],maxbval);
-%     end
-% end
-% catch
-%     keyboard
-% end
-
 [fa, md, rd, ad, fe, mk, rk, ak] = dki_parameters(dt,mask);
 
 if dti
