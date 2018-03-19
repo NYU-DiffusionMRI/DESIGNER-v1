@@ -18,16 +18,24 @@ from mrtrix3 import app, file, fsl, image, path, phaseEncoding, run
 app.init('Benjamin Ades-Aron (benjamin.ades-aron@nyumc.org)',
 	'DWI processing with DESIGNER')
 app.cmdline.addDescription("""1. pre-check: concatenate all dwi series and make sure the all diffusion AP images and PA image have the same matrix dimensions/orientations 
- 						2. denoise the complete dataset
-						3. gibbs ringing correction on complete dataset
-						4. generate a noisemap for images where SNR > 2
- 						5. rician bias correction 
- 						6. If multiple diffusion series are input, do rigid boy alignment to impove eddy results			 
+ 						2. denoise the complete dataset\n
+                        
+						3. gibbs ringing correction on complete dataset\n
+                        
+ 						4. If multiple diffusion series are input, do rigid boy alignment\n
 
- 						7. topup + eddy, rotate output bvecs
- 						8. perform b1 bias correction on each dwi subset
- 						9. Option for CSF excluded smoothing
- 						10. irwlls outlier map, cwlls dki fit
+ 						5. topup + eddy, rotate output bvecs\n
+                        
+ 						6. perform b1 bias correction on each dwi subset\n
+                        
+ 						7. CSF excluded smoothing\n
+                        
+                        8. Rician bias correction\n
+                        
+                        9. Normalization to white matter in first b0 image\n
+                        
+ 						10. irwlls outlier map, cwlls dki fit\n
+                        
  						11. outlier detection and removal
  	""")
 app.cmdline.addCitation('','Veraart, J.; Novikov, D.S.; Christiaens, D.; Ades-aron, B.; Sijbers, J. & Fieremans, E. Denoising of diffusion MRI using random matrix theory. NeuroImage, 2016, 142, 394-406, doi: 10.1016/j.neuroimage.2016.08.016',True)
