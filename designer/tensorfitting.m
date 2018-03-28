@@ -1,9 +1,15 @@
 function tensorfitting(root,outdir,detectoutliers,dti,dki,wmti,fitconstraints,akc,DKIroot)
 addpath(genpath(DKIroot));
 
-nii = load_untouch_nii(fullfile(root,'brain_mask.nii')); mask = logical(nii.img);
+maskex = exist(fullfile(root,'brain_mask.nii'),'file')
+if maskex == 2
+    nii = load_untouch_nii(fullfile(root,'brain_mask.nii')); mask = logical(nii.img);
+end
 nii = load_untouch_nii(fullfile(root,'dwi_designer.nii')); dwi = double(nii.img);
 ndwis = size(dwi,4); pixdim5 = nii.hdr.dime.pixdim(5);
+if maskex == 0
+    mask = logical(ones(size(dwi,1),size(dwi,2),size(dwi,3)));
+end
 
 bvallist = dir(fullfile(root,'dwi_designer.bval')); bvaldir = bvallist.name;
 bveclist = dir(fullfile(root,'dwi_designer.bvec')); bvecdir = bveclist.name;

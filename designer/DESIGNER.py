@@ -68,6 +68,7 @@ options.add_argument('-DTIparams', action='store_true', help='Include DTI parame
 options.add_argument('-DKIparams', action='store_true', help='Include DKI parameters in output folder (mk,ak,rk)')
 options.add_argument('-WMTIparams', action='store_true', help='Include DKI parameters in output folder (awf,ias_params,eas_params)')
 options.add_argument('-akc', action='store_true', help='brute force K tensor outlier rejection')
+options.add_argument('-mask', action='store_true',help='compute a brain mask prior to tensor fitting to stip skull and improve efficientcy')
 #options.add_argument('-processing_only', action='store_true', help='output only the processed diffusion weighted image')
 options.add_argument('-datatype', metavar=('<spec>'), help='If using the "-processing_only" option, you can specify the output datatype. Valid options are float32, float32le, float32be, float64, float64le, float64be, int64, uint64, int64le, uint64le, int64be, uint64be, int32, uint32, int32le, uint32le, int32be, uint32be, int16, uint16, int16le, uint16le, int16be, uint16be, cfloat32, cfloat32le, cfloat32be, cfloat64, cfloat64le, cfloat64be, int8, uint8, bit')
 options.add_argument('-fit_constraints',help='constrain the wlls fit (default 0,1,0)')
@@ -225,11 +226,12 @@ if app.args.b1correct:
     run.command('mrconvert dwibc.mif working.mif')
 
 # generate a final brainmask
-print("...Computing brain mask")
-run.command('dwiextract -bzero working.mif - | mrmath -axis 3 - mean b0bc.nii')
-# run.command('dwi2mask dwibc.mif - | maskfilter - dilate brain_mask.nii')
-# run.command('fslmaths b0bc.nii -mas brain_mask.nii brain')
-run.command('bet b0bc.nii brain' + fsl_suffix + ' -m -f 0.25')
+if app.args.mask or app.args.smooth or app.args.normalise:
+    print("...Computing brain mask")
+    run.command('dwiextract -bzero working.mif - | mrmath -axis 3 - mean b0bc.nii')
+    # run.command('dwi2mask dwibc.mif - | maskfilter - dilate brain_mask.nii')
+    # run.command('fslmaths b0bc.nii -mas brain_mask.nii brain')
+    run.command('bet b0bc.nii brain' + fsl_suffix + ' -m -f 0.25')
 if os.path.isfile('brain_mask.nii.gz'):
     with gzip.open('brain_mask' + fsl_suffix, 'rb') as f_in, open('brain_mask.nii', 'wb') as f_out:
         shutil.copyfileobj(f_in, f_out)

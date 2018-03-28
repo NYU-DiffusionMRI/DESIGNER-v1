@@ -131,7 +131,7 @@ function [b0, dt] = dki_fit(dwi, grad, mask, constraints, outliers, maxbval)
             C = [C; [zeros(ndir, 1), 3/max(bval)*D_cnt(ones(ndir, 1), :).*dir(:,D_ind(:, 1)).*dir(:,D_ind(:, 2)), -W_cnt(ones(ndir, 1), :).*dir(:,W_ind(:, 1)).*dir(:,W_ind(:, 2)).*dir(:,W_ind(:, 3)).*dir(:,W_ind(:, 4))]];
         end
         d = zeros([1, size(C, 1)]);
-        options = optimset('Display', 'off', 'Algorithm', 'active-set', 'MaxIter', 22000, 'TolCon', 1e-12, 'TolFun', 1e-12, 'TolX', 1e-12, 'MaxFunEvals', 220000);
+        options = optimset('Display', 'off', 'Algorithm', 'interior-point', 'MaxIter', 22000, 'TolCon', 1e-12, 'TolFun', 1e-12, 'TolX', 1e-12, 'MaxFunEvals', 220000);
         parfor i = 1:nvoxels
             try
                 in_ = outliers(:, i) == 0;
