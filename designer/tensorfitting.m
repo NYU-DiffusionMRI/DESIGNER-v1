@@ -1,7 +1,7 @@
 function tensorfitting(root,outdir,detectoutliers,dti,dki,wmti,fitconstraints,akc,DKIroot)
 addpath(genpath(DKIroot));
 
-maskex = exist(fullfile(root,'brain_mask.nii'),'file')
+maskex = exist(fullfile(root,'brain_mask.nii'),'file');
 if maskex == 2
     nii = load_untouch_nii(fullfile(root,'brain_mask.nii')); mask = logical(nii.img);
 end
@@ -78,6 +78,7 @@ if akc
     save_untouch_nii(nii,fullfile(root,'akc_out.nii'));
 end
 
+disp('...getting DTI and DKI params')
 [fa, md, rd, ad, fe, mk, rk, ak] = dki_parameters(dt,mask);
 
 if dti
@@ -108,11 +109,12 @@ if dki
 end
 
 if wmti
-    disp('...saving WMTI params')
+    disp('...getting WMTI params')
     nii.hdr.dime.dim(1) = 3;
     nii.hdr.dime.dim(5) = 1;
     nii.hdr.dime.pixdim(5) = 0;
     [awf, eas, ias] = wmti_parameters(dt, mask);
+    disp('...saving WMTI params')
     nii.img = awf; nii.hdr.dime.glmax = max(awf(:)); save_untouch_nii(nii,fullfile(outdir,'awf.nii'));
     fields = fieldnames(ias);
     for ii=1:numel(fields)
