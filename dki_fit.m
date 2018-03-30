@@ -137,6 +137,7 @@ function [b0, dt] = dki_fit(dwi, grad, mask, constraints, outliers, maxbval)
                 in_ = outliers(:, i) == 0;
                 wi = w(:,i); Wi = diag(wi(in_));             
                 dt(:, i) = lsqlin(Wi*b(in_, :),Wi*log(dwi(in_,i)),-C, d, [],[],[],[],[],options);
+                printcomp(i,nvoxels);
             catch
                 dt(:, i) = 0;
             end
@@ -152,6 +153,7 @@ function [b0, dt] = dki_fit(dwi, grad, mask, constraints, outliers, maxbval)
                 logdwii = log(dwi(in_,i));
                 dt(:,i) = (Wi*b_)\(Wi*logdwii);
             end
+            printcomp(i,nvoxels);
         end
     end
 
@@ -191,5 +193,18 @@ function [s, mask] = vectorize(S, mask)
            Si = S(:,:,:,i);
            s(i, :) = Si(mask(:));
         end
+    end
+end
+
+function printcomp(i,itot)
+    frac_now = ceil(i/itot*100);
+    frac_next = ceil((i+1)/itot*100);
+    if frac_next>frac_now
+        if i>1
+            for j=0:log10(i-1)
+                fprintf('\b');
+            end
+        end
+        fprintf('%s',[num2str(frac_now), '%']);
     end
 end

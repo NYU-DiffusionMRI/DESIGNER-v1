@@ -1,4 +1,4 @@
-function akc_out = outlierdetection(dt,mask)
+function akc_out = outlierdetection(dt)
     if ~exist('mask','var') || isempty(mask)     
         mask = ~isnan(dt(:,:,:,1));
     end
@@ -6,15 +6,16 @@ function akc_out = outlierdetection(dt,mask)
     load('dirs10000.mat','dir');
     
     nvxls = size(dt, 2);
-    akc_out = zeros([1 nvxls]);
+    a = zeros([1 nvxls]);
     N = 10000;
     nblocks = 10;
     for i=1:nblocks
         akc = AKC(dt, dir((N/nblocks*(i-1))+1:N/nblocks*i, :)); %#ok<NODEF>
-        akc_out = single(any(akc < -2 | akc > 10, 1));
+        maxk = nanmax([maxk; akc], [], 1);
     end
-    %[akc, adc] = AKC(dt, dir);
-    %akc_out = single(any(akc < -2 | akc > 10, 1));
+    
+    [akc, adc] = AKC(dt, dir);
+    akc_out = single(any(akc < -2 | akc > 10, 1));
     if exist('mask','var'), akc_out = vec(akc_out, mask); end
 end
 

@@ -58,13 +58,13 @@ end
 
 if akc
     disp('...running AKC correction')
-    akc_out = outlierdetection(dt);
+    akc_out = outlierdetection(dt,mask);
     akc_out(isnan(akc_out)) = 0;
     for v = 1:size(dt,4)
         dt_v = dt(:,:,:,v);
         dt_v(logical(akc_out)) = NaN;
         if verLessThan('matlab','9.2')
-            dt_f = fillmissing(dt_v,'spline');
+            dt_f = fillmissing(dt_v,'linear');
         else
             dt_f = fillmissing(dt_v,'movmedian',5);
         end
