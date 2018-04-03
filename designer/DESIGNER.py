@@ -73,6 +73,8 @@ options.add_argument('-mask', action='store_true',help='compute a brain mask pri
 options.add_argument('-datatype', metavar=('<spec>'), help='If using the "-processing_only" option, you can specify the output datatype. Valid options are float32, float32le, float32be, float64, float64le, float64be, int64, uint64, int64le, uint64le, int64be, uint64be, int32, uint32, int32le, uint32le, int32be, uint32be, int16, uint16, int16le, uint16le, int16be, uint16be, cfloat32, cfloat32le, cfloat32be, cfloat64, cfloat64le, cfloat64be, int8, uint8, bit')
 options.add_argument('-fit_constraints',help='constrain the wlls fit (default 0,1,0)')
 options.add_argument('-outliers',action='store_true',help='Perform IRWLLS outlier detection')
+options.add_argument('-fslbvec',metavar=('<bvecs>'),help='specify bvec path if path is different from the path to the dwi or the file has an unusual extention')
+options.add_argument('-fslbval',metavar=('<bvals>'),help='specify bval path if path is different from the path to the dwi or the file has an unusual extention')
 rpe_options = app.cmdline.add_argument_group('Options for specifying the acquisition phase-encoding design')
 rpe_options.add_argument('-rpe_none', action='store_true', help='Specify that no reversed phase-encoding image data is being provided; eddy will perform eddy current and motion correction only')
 rpe_options.add_argument('-rpe_pair', metavar=('<reverse PE b=0 image>'), help='Specify the reverse phase encoding image')
@@ -94,11 +96,22 @@ app.makeTempDir()
 
 fsl_suffix = fsl.suffix()
 
-Userpath = path.fromUser(app.args.input,True).rsplit('/',1)[0]
-if os.path.exists(app.args.input):
-    DWIlist = [i for i in app.args.input.split(',')]
-else:
-    DWIlist = [Userpath + '/' + i for i in app.args.input.split(',')]
+UserCpath = app.args.input.rsplit(',')
+DWIlist = [os.path.realpath(i) for i in UserCpath]
+
+isdicom = False
+for i in DWIlist:
+    if not os.path.exists(i):
+        print('cannot find input ' + i)
+        quit()
+    if os.path.isdir(i):
+        format=image.headerField(i,'format')
+        if format == 'DICOM':
+            isdicom = True
+        else:
+            print('input is a directory but does not contain DICOMs, quitting')
+            quit()
+
 DWIflist = [splitext_(i) for i in DWIlist]
 DWInlist = [i[0] for i in DWIflist]
 DWIext = [i[1] for i in DWIflist]
@@ -106,16 +119,32 @@ miflist = []
 idxlist = []
 dwi_ind_size = [[0,0,0,0]]
 
+if not app.args.fslbval:
+    bvallist = [i + '.bval' for i in DWInlist]
+else:
+    UserBvalpath = app.args.fslbval.rsplit(',')
+    bvallist = [os.path.realpath(i) for i in UserBvalpath]
+if not app.args.fslbvec:
+    bveclist = [i + '.bvec' for i in DWInlist]
+else:
+    UserBvecpath = app.args.fslbvec.rsplit(',')
+    bveclist = [os.path.realpath(i) for i in UserBvecpath]
 
 if len(DWInlist) == 1:
-	run.command('mrconvert -stride -1,2,3,4 -fslgrad ' + ''.join(DWInlist) + '.bvec ' + ''.join(DWInlist) + '.bval ' + ''.join(DWInlist) + ''.join(DWIext) + ' ' + path.toTemp('dwi.mif',True))
+    if not isdicom:
+        run.command('mrconvert -stride -1,2,3,4 -fslgrad ' + bveclist[0] + ' ' + bvallist[0] + ' ' + ''.join(DWInlist) + ''.join(DWIext) + ' ' + path.toTemp('dwi.mif',True))
+    else:
+        run.command('mrconvert -stride -1,2,3,4 ' + ''.join(DWInlist) + ' ' + path.toTemp('dwi.mif',True))
 else:
-	for idx,i in enumerate(DWInlist):
-		run.command('mrconvert -stride -1,2,3,4 -fslgrad ' + i + '.bvec ' + i + '.bval ' + i + DWIext[idx] + ' ' + path.toTemp('dwi' + str(idx) + '.mif',True))
-		dwi_ind_size.append([ int(s) for s in image.headerField(path.toTemp('dwi' + str(idx) + '.mif',True), 'size').split() ])
-		miflist.append(path.toTemp('dwi' + str(idx) + '.mif',True))
-	DWImif = ' '.join(miflist)
-	run.command('mrcat -axis 3 ' + DWImif + ' ' + path.toTemp('dwi.mif',True))
+    for idx,i in enumerate(DWInlist):
+        if not isdicom:
+            run.command('mrconvert -stride -1,2,3,4 -fslgrad ' + bveclist[idx] + ' ' + bvallist[idx] + ' ' + i + DWIext[idx] + ' ' + path.toTemp('dwi' + str(idx) + '.mif',True))
+        else:
+            run.command('mrconvert -stride -1,2,3,4 ' + i + ' ' + path.toTemp('dwi' + str(idx) + '.mif',True))
+        dwi_ind_size.append([ int(s) for s in image.headerField(path.toTemp('dwi' + str(idx) + '.mif',True), 'size').split() ])
+        miflist.append(path.toTemp('dwi' + str(idx) + '.mif',True))
+    DWImif = ' '.join(miflist)
+    run.command('mrcat -axis 3 ' + DWImif + ' ' + path.toTemp('dwi.mif',True))
 
 app.gotoTempDir()
 
