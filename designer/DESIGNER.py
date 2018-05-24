@@ -55,10 +55,8 @@ options = app.cmdline.add_argument_group('Other options for the DESIGNER script'
 options.add_argument('-denoise', action='store_true', help='Perform dwidenoise')
 options.add_argument('-extent', metavar=('<size>'), help='Denoising extent. Default is 5,5,5')
 options.add_argument('-degibbs', action='store_true', help='Perform Gibbs artifact correction')
-#options.add_argument('-degibbs', help='Perform Gibbs artifact correction. Input options are "fsl" or "matlab", depending pn which unringing executable is in your PATH')
 options.add_argument('-rician', action='store_true', help='Perform Rician bias correction')
 options.add_argument('-rician_lowsnr', metavar=('<b-value where SNR=2>'), help='Perform Rician bias correction specifying the b-value where snr<2')
-#options.add_argument('-rician', action=FooAction)
 options.add_argument('-prealign', action='store_true', help='If there are multiple input diffusion series, do rigid alignment prior to eddy to maximize motion correction performance')
 options.add_argument('-eddy', action='store_true', help='run fsl eddy (note that if you choose this command you must also choose a phase encoding option')
 options.add_argument('-b1correct', action='store_true', help='Include a bias correction step in dwi preprocessing', default=False)
@@ -68,8 +66,8 @@ options.add_argument('-DTIparams', action='store_true', help='Include DTI parame
 options.add_argument('-DKIparams', action='store_true', help='Include DKI parameters in output folder (mk,ak,rk)')
 options.add_argument('-WMTIparams', action='store_true', help='Include DKI parameters in output folder (awf,ias_params,eas_params)')
 options.add_argument('-akc', action='store_true', help='brute force K tensor outlier rejection')
+options.add_argument('-kcumulants', action='store_true',help='compute a brain mask prior to tensor fitting to stip skull and improve efficientcy')
 options.add_argument('-mask', action='store_true',help='compute a brain mask prior to tensor fitting to stip skull and improve efficientcy')
-#options.add_argument('-processing_only', action='store_true', help='output only the processed diffusion weighted image')
 options.add_argument('-datatype', metavar=('<spec>'), help='If using the "-processing_only" option, you can specify the output datatype. Valid options are float32, float32le, float32be, float64, float64le, float64be, int64, uint64, int64le, uint64le, int64be, uint64be, int32, uint32, int32le, uint32le, int32be, uint32be, int16, uint16, int16le, uint16le, int16be, uint16be, cfloat32, cfloat32le, cfloat32be, cfloat64, cfloat64le, cfloat64be, int8, uint8, bit')
 options.add_argument('-fit_constraints',help='constrain the wlls fit (default 0,1,0)')
 options.add_argument('-outliers',action='store_true',help='Perform IRWLLS outlier detection')
@@ -368,8 +366,11 @@ if app.args.DTIparams or app.args.DKIparams or app.args.WMTIparams:
     AKC=0
     if app.args.akc:
         AKC=1
+    KCUM=0
+    if app.args.kcumulants:
+        KCUM=1
 
-    eng.tensorfitting(path.toTemp('',True),path.fromUser(app.args.output, True),outliers,DTI,DKI,WMTI,constraints,AKC,DKI_root,nargout=0)
+    eng.tensorfitting(path.toTemp('',True),path.fromUser(app.args.output, True),outliers,KCUM,DTI,DKI,WMTI,constraints,AKC,DKI_root,nargout=0)
     eng.quit()
     app.gotoTempDir()
 else:
