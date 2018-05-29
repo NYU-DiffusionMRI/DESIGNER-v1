@@ -29,9 +29,9 @@ function tensorfitting(root,outdir,detectoutliers,cumulants,dti,dki,wmti,fitcons
         constraints(2) = str2double(conts(2));
         constraints(3) = str2double(conts(3));
     else
-        constraints = 0;
+        constraints = [0,1,0];
     end
-    cumulants = logical(cumulants)
+    cumulants = logical(cumulants);
 
     if detectoutliers
         disp('...running IRWLLS')
@@ -41,20 +41,14 @@ function tensorfitting(root,outdir,detectoutliers,cumulants,dti,dki,wmti,fitcons
         nii.hdr.dime.dim(5) = ndwis;
         nii.hdr.dime.pixdim(5) = pixdim5;
         nii.img = outliers;  save_untouch_nii(nii,fullfile(root,'irwlls_out.nii'));
-        if sum(constraints) == 0
-            disp('...running unconstrained fit')
-            [b0,dt] = dki_fit(dwi,[bvec,bval],mask,[0,1,0],outliers,maxbval);
-        else
-        disp('...running constrained fit')
+        disp(['... fitting with constraints ',num2str(constraints)])
+        if ischar(fitconstraints) == 0
             [b0,dt] = dki_fit(dwi,[bvec,bval],mask,constraints,outliers,maxbval);
         end
     else
-        if sum(constraints) == 0
-            disp('...running unconstrained fit')
-            [b0,dt] = dki_fit(dwi,[bvec,bval],mask,[0,1,0],[],maxbval);
-        else
-        disp('...running constrained fit')
-        [b0,dt] = dki_fit(dwi,[bvec,bval],mask,constraints,[],maxbval);
+        disp(['... fitting with constraints ',num2str(constraints)])
+        if ischar(fitconstraints) == 0
+            [b0,dt] = dki_fit(dwi,[bvec,bval],mask,constraints,[],maxbval);
         end
     end
 
