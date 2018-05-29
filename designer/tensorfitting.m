@@ -42,14 +42,10 @@ function tensorfitting(root,outdir,detectoutliers,cumulants,dti,dki,wmti,fitcons
         nii.hdr.dime.pixdim(5) = pixdim5;
         nii.img = outliers;  save_untouch_nii(nii,fullfile(root,'irwlls_out.nii'));
         disp(['... fitting with constraints ',num2str(constraints)])
-        if ischar(fitconstraints) == 0
-            [b0,dt] = dki_fit(dwi,[bvec,bval],mask,constraints,outliers,maxbval);
-        end
+        [b0,dt] = dki_fit(dwi,[bvec,bval],mask,constraints,outliers,maxbval);
     else
         disp(['... fitting with constraints ',num2str(constraints)])
-        if ischar(fitconstraints) == 0
-            [b0,dt] = dki_fit(dwi,[bvec,bval],mask,constraints,[],maxbval);
-        end
+        [b0,dt] = dki_fit(dwi,[bvec,bval],mask,constraints,[],maxbval);
     end
 
     if akc
