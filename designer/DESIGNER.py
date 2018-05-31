@@ -103,7 +103,7 @@ for i in DWIlist:
         print('cannot find input ' + i)
         quit()
     if os.path.isdir(i):
-        format=image.headerField(i,'format')
+        format=image.Header(i).format()
         if format == 'DICOM':
             isdicom = True
         else:
@@ -139,7 +139,8 @@ else:
             run.command('mrconvert -stride -1,2,3,4 -fslgrad ' + bveclist[idx] + ' ' + bvallist[idx] + ' ' + i + DWIext[idx] + ' ' + path.toTemp('dwi' + str(idx) + '.mif',True))
         else:
             run.command('mrconvert -stride -1,2,3,4 ' + i + ' ' + path.toTemp('dwi' + str(idx) + '.mif',True))
-        dwi_ind_size.append([ int(s) for s in image.headerField(path.toTemp('dwi' + str(idx) + '.mif',True), 'size').split() ])
+        dwi_header = image.Header(path.toTemp('dwi' + str(idx) + '.mif',True))
+        dwi_ind_size.append([ int(s) for s in dwi_header.size() ])
         miflist.append(path.toTemp('dwi' + str(idx) + '.mif',True))
     DWImif = ' '.join(miflist)
     run.command('mrcat -axis 3 ' + DWImif + ' ' + path.toTemp('dwi.mif',True))
@@ -147,11 +148,12 @@ else:
 app.gotoTempDir()
 
 # get diffusion header info - check to make sure all values are valid for processing
-dwi_size = [ int(s) for s in image.headerField('dwi.mif', 'size').split() ]
-grad = image.headerField('dwi.mif', 'dwgrad').split('\n')
-grad = [ line.split() for line in grad ]
+dwi_header = image.Header(path.toTemp('dwi.mif',True))
+dwi_size = [ int(s) for s in dwi_header.size() ]
+grad = dwi_header.keyval()['dw_scheme']
+grad = [ line for line in grad ]
 grad = [ [ float(f) for f in line ] for line in grad ]
-stride = image.headerField('dwi.mif', 'stride')
+stride = dwi_header.strides()
 num_volumes = 1
 if len(dwi_size) == 4:
   num_volumes = dwi_size[3]
@@ -215,7 +217,7 @@ if app.args.eddy:
         run.command('dwipreproc -eddy_options " --repol --data_is_shelled" -rpe_none -pe_dir ' + app.args.pe_dir + ' working.mif dwiec.mif')
     elif app.args.rpe_pair:
         run.command('dwiextract -bzero dwi.mif - | mrconvert -coord 3 0 - b0pe.mif')
-        rpe_size = [ int(s) for s in image.headerField(path.fromUser(app.args.rpe_pair,True), 'size').split() ]
+        rpe_size = [ int(s) for s in image.Header(path.fromUser(app.args.rpe_pair,True)).size() ]
         if len(rpe_size) == 4:
             run.command('mrconvert -coord 3 0 ' + path.fromUser(app.args.rpe_pair,True) + ' b0rpe.mif')
         else: run.command('mrconvert ' + path.fromUser(app.args.rpe_pair,True) + ' b0rpe.mif')

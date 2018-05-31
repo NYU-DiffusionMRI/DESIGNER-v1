@@ -79,7 +79,7 @@ function tensorfitting(root,outdir,detectoutliers,cumulants,dti,dki,wmti,fitcons
 
     disp('...getting DTI and DKI params')
     [fa, md, rd, ad, fe, mk, rk, ak] = dki_parameters(dt,mask);
-    fe = cat(4,fa.*fe(:,:,:,2),fa.*fe(:,:,:,3),fa.*fe(:,:,:,1));
+    fe = cat(4,fa.*fe(:,:,:,1),fa.*fe(:,:,:,2),fa.*fe(:,:,:,3));
 
     if dti
         disp('...saving DTI params')
