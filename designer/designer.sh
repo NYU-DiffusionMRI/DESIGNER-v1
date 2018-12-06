@@ -15,11 +15,12 @@ input=$1
 output=$2
 
 # Run designer
-python -m pdb designer.py \
+python designer.py \
 -denoise -extent 5,5,5 \
 -degibbs \
+-mask \
 -rician \
--b1correct \
--rpe_header  -eddy  \
+-rpe_header -eddy \
+-smooth 1.5 \
 -DKIparams -DTIparams \
 ${1} ${2}
