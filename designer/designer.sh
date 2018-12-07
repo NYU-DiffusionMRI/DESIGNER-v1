@@ -21,6 +21,6 @@ python designer.py \
 -mask \
 -rician \
 -rpe_header -eddy \
--smooth 1.5 \
+-smooth 1.25 \
 -DKIparams -DTIparams \
 ${1} ${2}
