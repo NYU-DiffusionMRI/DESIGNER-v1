@@ -111,12 +111,7 @@ parfor i = 1:nvoxels
     akc = AKC(dt(:,i), dirs);
     rk(i) = mean(akc);
 end
-
-
-
-
-            
-            
+               
 %% return maps
 fa = vectorize(fa, mask);
 md = vectorize(md, mask);
@@ -487,4 +482,3 @@ for i = 1:size(S, 4)
 end
 end
 end
-   
