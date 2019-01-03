@@ -110,7 +110,8 @@ parfor i = 1:nvoxels
     dirs = radialsampling(e1(:,i), 256)';
     akc = AKC(dt(:,i), dirs);
     rk(i) = mean(akc);
-    [kfa(i),mkt(i)] = ComputeKFA(dt(:,i),0,3)
+    [kfa(i),mkt(i)] = ComputeKFA(dt(:,i),0,3)   % [0 3] define the range of
+    %   kurotsis to use in the calculation of KFA
 end
                
 %% return maps

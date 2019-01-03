@@ -78,7 +78,7 @@ function tensorfitting(root,outdir,detectoutliers,cumulants,dti,dki,wmti,fitcons
     end
 
     disp('...getting DTI and DKI params')
-    [fa, md, rd, ad, fe, mk, rk, ak] = dki_parameters(dt,mask);
+    [fa, md, rd, ad, fe, mk, rk, ak, kfa, mkt] = dki_parameters(dt,mask);
     fe = cat(4,fa.*fe(:,:,:,1),fa.*fe(:,:,:,2),fa.*fe(:,:,:,3));
 
     if dti
@@ -106,6 +106,8 @@ function tensorfitting(root,outdir,detectoutliers,cumulants,dti,dki,wmti,fitcons
         nii.img = mk; nii.hdr.dime.glmax = max(mk(:)); save_untouch_nii(nii,fullfile(outdir,'mk.nii'));
         nii.img = rk; nii.hdr.dime.glmax = max(rk(:)); save_untouch_nii(nii,fullfile(outdir,'rk.nii'));
         nii.img = ak; nii.hdr.dime.glmax = max(ak(:)); save_untouch_nii(nii,fullfile(outdir,'ak.nii'));
+        nii.img = kfa; nii.hdr.dime.glmax = max(ak(:)); save_untouch_nii(nii,fullfile(outdir,'kfa.nii'));
+        nii.img = mkt; nii.hdr.dime.glmax = max(ak(:)); save_untouch_nii(nii,fullfile(outdir,'mkt.nii'));
     end
 
     if wmti
