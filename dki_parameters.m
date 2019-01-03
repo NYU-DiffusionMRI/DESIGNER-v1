@@ -36,6 +36,8 @@ function [fa, md, rd, ad, fe, mk,  rk, ak, kfa, mkt] = dki_parameters(dt, mask)
     %  6. mk:                mean kurtosis
     %  7. rk:                radial kurtosis
     %  8. ak:                axial kurtosis
+    %  9. kfa:               kurtosis fractional anisotropy
+    %  10. mkt:              mean kurtosis tensor
     %
     % Important: The presence of outliers "black voxels" in the kurtosis maps 
     %            are we well-known, but inherent problem to DKI. Smoothing the 
