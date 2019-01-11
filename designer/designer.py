@@ -330,7 +330,7 @@ if app.args.prealign:
         call('mrcat -axis 3 dwipretf0.mif ' + DWImif + ' dwitf.mif',shell=True)
     run.function(os.remove, 'working.mif')
     call('mrconvert dwitf.mif working.mif',shell=True)
-
+    
 # epi + eddy current and motion correction
 # if number of input volumes is greater than 1, make a new acqp and index file.
 
