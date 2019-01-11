@@ -18,8 +18,10 @@ output=$2
 python designer.py \
 -denoise -extent 5,5,5 \
 -degibbs \
--mask \
 -rician \
+-mask \
+-prealign \
 -smooth 1.25 \
+-eddy -rpe_header \
 -DKIparams -DTIparams \
 ${1} ${2}

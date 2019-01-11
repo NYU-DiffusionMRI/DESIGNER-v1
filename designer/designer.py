@@ -138,7 +138,7 @@ options.add_argument('-kcumulants', action='store_true',
                      help='output the kurtosis tensor with W cumulant rather than K'
                      )
 options.add_argument('-mask', action='store_true',
-                     help='compute a brain mask prior to tensor fitting to stip skull and improve efficientcy'
+                     help='compute a brain mask prior to tensor fitting to stip skull and improve efficiency'
                      )
 options.add_argument('-datatype', metavar='<spec>',
                      help='If using the "-processing_only" option, you can specify the output datatype. Valid options are float32, float32le, float32be, float64, float64le, float64be, int64, uint64, int64le, uint64le, int64be, uint64be, int32, uint32, int32le, uint32le, int32be, uint32be, int16, uint16, int16le, uint16le, int16be, uint16be, cfloat32, cfloat32le, cfloat32be, cfloat64, cfloat64le, cfloat64be, int8, uint8, bit'
@@ -321,13 +321,13 @@ if app.args.prealign:
             if idx > 0:
                 call('mrregister -nthreads 8 -type rigid -noreorientation -rigid rigidXform'
                              + str(idx) + 'to0.txt b0pretf' + str(idx)
-                            + '.mif b0tf0.mif',shell=True)
+                            + '.mif b0pretf0.mif',shell=True)
                 call('mrtransform -linear rigidXform' + str(idx)
                             + 'to0.txt dwipretf' + str(idx)
                             + '.mif dwitf' + str(idx) + '.mif',shell=True)
                 miflist.append('dwitf' + str(idx) + '.mif')
         DWImif = ' '.join(miflist)
-        call('mrcat -axis 3 dwitf0.mif ' + DWImif + ' dwitf.mif',shell=True)
+        call('mrcat -axis 3 dwipretf0.mif ' + DWImif + ' dwitf.mif',shell=True)
     run.function(os.remove, 'working.mif')
     call('mrconvert dwitf.mif working.mif',shell=True)
 
