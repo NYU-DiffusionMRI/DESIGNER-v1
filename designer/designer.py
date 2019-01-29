@@ -330,14 +330,14 @@ if app.args.prealign:
         call('mrcat -axis 3 dwipretf0.mif ' + DWImif + ' dwitf.mif',shell=True)
     run.function(os.remove, 'working.mif')
     call('mrconvert dwitf.mif working.mif',shell=True)
-    
+
 # epi + eddy current and motion correction
 # if number of input volumes is greater than 1, make a new acqp and index file.
 
 if app.args.eddy:
     print('...Beginning EDDY')
     if app.args.rpe_none:
-        call('dwipreproc -eddy_options " --repol --data_is_shelled" -nthreads 8 -rpe_none -pe_dir '
+        call('dwipreproc -eddy_options " --repol --data_is_shelled" -nthreads 16 -rpe_none -pe_dir '
                      + app.args.pe_dir + ' working.mif dwiec.mif',shell=True)
     elif app.args.rpe_pair:
         call('dwiextract -bzero dwi.mif - | mrconvert -coord 3 0 - b0pe.mif',shell=True
@@ -353,7 +353,7 @@ if app.args.eddy:
             call('mrconvert ' + path.fromUser(app.args.rpe_pair,
                         True) + ' b0rpe.mif',shell=True)
         call('mrcat -axis 3 b0pe.mif b0rpe.mif rpepair.mif',shell=True)
-        call('dwipreproc -eddy_options " --repol --data_is_shelled" -rpe_pair -se_epi -nthreads 8 rpepair.mif -pe_dir '
+        call('dwipreproc -eddy_options " --repol --data_is_shelled" -rpe_pair -se_epi -nthreads 16 rpepair.mif -pe_dir '
                      + app.args.pe_dir + ' working.mif dwiec.mif',shell=True)
     elif app.args.rpe_all:
         call('mrconvert -export_grad_mrtrix grad.txt dwi.mif tmp.mif',shell=True
@@ -363,11 +363,11 @@ if app.args.eddy:
                     + ' dwirpe.mif',shell=True)
         call('mrcat -axis 3 working.mif dwirpe.mif dwipe_rpe.mif',shell=True
                     )
-        call('dwipreproc -eddy_options " --repol --data_is_shelled" -nthreads 8 -rpe_all -pe_dir '
+        call('dwipreproc -eddy_options " --repol --data_is_shelled" -nthreads 16 -rpe_all -pe_dir '
                      + app.args.pe_dir + ' dwipe_rpe.mif dwiec.mif',shell=True)
         run.function(os.remove, 'tmp.mif')
     elif app.args.rpe_header:
-        call('dwipreproc -eddy_options " --repol --data_is_shelled" -nthreads 8 -rpe_header working.mif dwiec.mif',shell=True
+        call('dwipreproc -eddy_options " --repol --data_is_shelled" -nthreads 16 -rpe_header working.mif dwiec.mif',shell=True
                     )
     elif not app.args.rpe_header and not app.args.rpe_all \
         and not app.args.rpe_pair:
