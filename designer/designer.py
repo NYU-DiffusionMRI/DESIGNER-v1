@@ -294,7 +294,7 @@ call('mrconvert dwi.mif working.mif',shell=True)
 if app.args.denoise:
     print('...Beginning denoising')
     call('dwidenoise -extent ' + extent
-                + ' -nthreads 8 -noise fullnoisemap.nii working.mif dwidn.mif',shell=True)
+                + ' -nthreads 16 -noise fullnoisemap.nii working.mif dwidn.mif',shell=True)
     run.function(os.remove, 'working.mif')
     call('mrconvert dwidn.mif working.mif',shell=True)
 
@@ -302,7 +302,7 @@ if app.args.denoise:
 
 if app.args.degibbs:
     print('...Beginning degibbsing')
-    call('mrdegibbs -nthreads 8 -nshifts 20 -minW 1 -maxW 3 working.mif dwigc.mif',shell=True
+    call('mrdegibbs -nthreads 16 -nshifts 20 -minW 1 -maxW 3 working.mif dwigc.mif',shell=True
                 )
     run.function(os.remove, 'working.mif')
     call('mrconvert dwigc.mif working.mif',shell=True)
@@ -319,7 +319,7 @@ if app.args.prealign:
                         + '.mif - | mrconvert -coord 3 0 - b0pretf'
                         + str(idx) + '.mif',shell=True)
             if idx > 0:
-                call('mrregister -nthreads 8 -type rigid -noreorientation -rigid rigidXform'
+                call('mrregister -nthreads 16 -type rigid -noreorientation -rigid rigidXform'
                              + str(idx) + 'to0.txt b0pretf' + str(idx)
                             + '.mif b0pretf0.mif',shell=True)
                 call('mrtransform -linear rigidXform' + str(idx)
@@ -328,8 +328,7 @@ if app.args.prealign:
                 miflist.append('dwitf' + str(idx) + '.mif')
         DWImif = ' '.join(miflist)
         call('mrcat -axis 3 dwipretf0.mif ' + DWImif + ' dwitf.mif',shell=True)
-    run.function(os.remove, 'working.mif')
-    call('mrconvert dwitf.mif working.mif',shell=True)
+        call('mrconvert dwitf.mif working.mif',shell=True)
 
 # epi + eddy current and motion correction
 # if number of input volumes is greater than 1, make a new acqp and index file.
