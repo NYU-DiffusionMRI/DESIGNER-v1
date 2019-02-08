@@ -153,10 +153,66 @@ end
         end
     end
 
-%   Split and save dt into DT and KT
+%   Split and save dt into DT and KT for MUSC DKE_FT
 disp('...saving diffusion and kurtosis tensors')
 DT = dt(:,:,:,1:6);
 KT = dt(:,:,:,7:21);
+
+%   Reshape 4D tensors into [num_voxels x tensors]
+DT = reshape(DT,[],6);
+KT = reshape(KT,[],15);
+
+%   Initialize post-transformation matrices
+DT_U = zeros(size(DT));
+KT_U = zeros(size(KT));
+
+%   The two pipelines take in tensors in the following layout:
+%       =============================
+%           MUSC            Designer
+%       --------------D--------------
+%    1  |   D11               D11
+%    2  |   D22               D12
+%    3  |   D33               D13
+%    4  |   D12               D22
+%    5  |   D13               D23
+%    6  |   D23               D33
+%       --------------K--------------
+%    1  |  W1111             W1111
+%    2  |  W2222             W1112
+%    3  |  W3333             W1113
+%    4  |  W1112             W1122
+%    5  |  W1113             W1123
+%    6  |  W1222             W1133
+%    7  |  W1333             W1222
+%    8  |  W2223             W1223
+%    9  |  W2333             W1233
+%   10  |  W1122             W1333
+%   11  |  W1133             W2222
+%   12  |  W2233             W2223
+%   13  |  W1123             W2233
+%   14  |  W1223             W2333
+%   15  |  W1233             W3000
+
+%   Using the table above, the following transformation matrices tranform
+%   designer tensors onto MUSC's tensors.
+DT_trans = [1 4 6 2 3 5];
+KT_trans = [1 11 15 2 3 7 10 12 14 4 6 13 5 8 9];
+
+%   Apply transformation
+for i = 1:length(DT_trans)
+    DT_U(:,i) = DT(:,DT_trans(i));
+end
+
+for i = 1:length(KT_trans)
+    KT_U(:,i) = KT(:,KT_trans(i));
+end
+
+clear DT KT
+
+%   Transpose to obtain [tensors x num_voxels]
+DT = DT_U'; KT = KT_U';
+
+%   Save tensors
 save(fullfile(outdir,'DT.mat'),'DT');
 save(fullfile(outdir,'KT.mat'),'KT');
 
