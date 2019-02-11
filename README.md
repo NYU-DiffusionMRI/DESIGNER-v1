@@ -174,7 +174,7 @@ setenv('FSLDIR','/usr/local/fsl');
 Once all variables and paths are defined for dependencies, you should have no problems running this software package for automatic study processing. Refer to the screenshots below to to compare our startup.m and ~/.bash_profile.
 
 ![alt text](https://imgur.com/efH3T01.png "our ~/.bash_profile")
-![a;t text](https://imgur.com/Lkzj1gs.png "out startup.m MATLAB script")
+![alt text](https://imgur.com/Lkzj1gs.png "out startup.m MATLAB script")
 
 Essentially, try to mimic your startup.m as closely as your bash profile for Mrtrix3 and FSL to ensure a smooth preprocessing pipeline.
 
@@ -189,9 +189,14 @@ nano ~/.bash_profile
 Ensure that your profile has FSL, MRtrix3 and conda system varibles defined (refer to our .bash_profile's screenshot above) If you do, proceed with a system reboot. Otherwise, check your installation of missing modules.
 
 ## Directory Configuration
+To-Do
 
+## Fututre Updates
+Available upon requests
 
+## Acknowledgements
+I'd like to thank NYU's dMRI team for their original work which formed the basis of this pipeline. Their Designer pipeline forms most of this software package, which was wrapped with MATLAB for ease-of-use.
 
+Also extending my gratitude to Dr. Jensen, for his continued guidance and support. His ideas and suggestion have made this package possible. He has been involved in every part of validating this pipeline and pointing out regions to watch out for.
 
-
-
+Not forgetting Emilie McKinnon, for the countless hours she spent looking over my code in times of need to point out my errors. She's been a wonderful debugger and feature suggester.
