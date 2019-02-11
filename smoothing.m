@@ -67,7 +67,7 @@ function B = nansmoothing(A, kernelsize, width)
 
 
      for i=1:size(A, 3)
-        B(:,:,i) = colfilt(A(:,:,i),[5 5],'sliding',@(x)nansmoothing_f(x, kernelsize, width));
+        B(:,:,i) = colfilt(A(:,:,i),kernelsize,'sliding',@(x)nansmoothing_f(x, kernelsize, width));
      end
 
      B(isnan(A)) = NaN;
