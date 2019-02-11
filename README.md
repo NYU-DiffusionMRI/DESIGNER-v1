@@ -189,10 +189,11 @@ nano ~/.bash_profile
 Ensure that your profile has FSL, MRtrix3 and conda system varibles defined (refer to our .bash_profile's screenshot above) If you do, proceed with a system reboot. Otherwise, check your installation of missing modules.
 
 ## Directory Configuration
-To-Do
+WIP
 
-## Fututre Updates
-Available upon requests
+## Future Updates
+1. Imporve efficiency of MATLAB study script
+2. GUI wrapper for entire package
 
 ## Acknowledgements
 I'd like to thank NYU's dMRI team for their original work which formed the basis of this pipeline. Their Designer pipeline forms most of this software package, which was wrapped with MATLAB for ease-of-use.
