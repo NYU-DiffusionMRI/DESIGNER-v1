@@ -15,7 +15,7 @@ input=$1
 output=$2
 
 # Run designer
-python -m pdb designer.py \
+python designer.py \
 -denoise -extent 5,5,5 \
 -degibbs \
 -rician \
