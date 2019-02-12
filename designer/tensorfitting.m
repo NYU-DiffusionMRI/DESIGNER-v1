@@ -1,6 +1,5 @@
 function tensorfitting(root,outdir,detectoutliers,cumulants,dti,dki,wmti,fitconstraints,akc,DKIroot)
 
-<<<<<<< HEAD
 addpath(genpath(DKIroot));
 
 maskex = exist(fullfile(root,'brain_mask.nii'),'file');
@@ -132,7 +131,6 @@ if wmti
         nii.img = paramsii; nii.hdr.dime.glmax = max(paramsii(:)); save_untouch_nii(nii,savename);
     end
 end
-=======
     addpath(genpath(DKIroot));
 
     maskex = exist(fullfile(root,'brain_mask.nii'),'file');
@@ -262,7 +260,6 @@ end
             nii.img = paramsii; nii.hdr.dime.glmax = max(paramsii(:)); save_untouch_nii(nii,savename);
         end
     end
->>>>>>> dc4495ad32fb2eff3804278ce68cea52965cce99
 
     function [s, mask] = vectorize(S, mask)
         if nargin == 1
@@ -348,7 +345,5 @@ DT = DT_U'; KT = KT_U';
 save(fullfile(outdir,'DT.mat'),'DT');
 save(fullfile(outdir,'KT.mat'),'KT');
 
-=======
->>>>>>> dc4495ad32fb2eff3804278ce68cea52965cce99
 end
 

@@ -224,22 +224,22 @@ else:
 
 if len(DWInlist) == 1:
     if not isdicom:
-        call('mrconvert -stride -1,2,3,4 -fslgrad '
+        call('mrconvert -force -stride -1,2,3,4 -fslgrad '
                     + bveclist[0] + ' ' + bvallist[0] + ' '
                     + ''.join(DWInlist) + ''.join(DWIext) + ' '
                     + path.toTemp('dwi.mif', True),shell=True)
     else:
-        call('mrconvert -stride -1,2,3,4 ' + ''.join(DWInlist)
+        call('mrconvert -force -stride -1,2,3,4 ' + ''.join(DWInlist)
                     + ' ' + path.toTemp('dwi.mif', True),shell=True)
 else:
     for (idx, i) in enumerate(DWInlist):
         if not isdicom:
-            call('mrconvert -stride -1,2,3,4 -fslgrad '
+            call('mrconvert -force -stride -1,2,3,4 -fslgrad '
                         + bveclist[idx] + ' ' + bvallist[idx] + ' ' + i
                         + DWIext[idx] + ' ' + path.toTemp('dwi'
                         + str(idx) + '.mif', True),shell=True)
         else:
-            call('mrconvert -stride -1,2,3,4 ' + i + ' '
+            call('mrconvert -force -stride -1,2,3,4 ' + i + ' '
                         + path.toTemp('dwi' + str(idx) + '.mif', True),shell=True)
         dwi_header = image.Header(path.toTemp('dwi' + str(idx) + '.mif'
                                   , True))
@@ -287,7 +287,7 @@ if app.args.extent:
 else:
     extent = '5,5,5'
 
-call('mrconvert dwi.mif working.mif',shell=True)
+call('mrconvert -force dwi.mif working.mif',shell=True)
 
 # denoising
 
@@ -296,7 +296,7 @@ if app.args.denoise:
     call('dwidenoise -extent ' + extent
                 + ' -nthreads 16 -noise fullnoisemap.nii working.mif dwidn.mif',shell=True)
     run.function(os.remove, 'working.mif')
-    call('mrconvert dwidn.mif working.mif',shell=True)
+    call('mrconvert -force dwidn.mif working.mif',shell=True)
 
 # gibbs artifact correction
 
@@ -305,7 +305,7 @@ if app.args.degibbs:
     call('mrdegibbs -nthreads 16 -nshifts 20 -minW 1 -maxW 3 working.mif dwigc.mif',shell=True
                 )
     run.function(os.remove, 'working.mif')
-    call('mrconvert dwigc.mif working.mif',shell=True)
+    call('mrconvert -force dwigc.mif working.mif',shell=True)
 
 # pre-eddy alignment for multiple input series
 
@@ -313,10 +313,10 @@ if app.args.prealign:
     if len(DWInlist) != 1:
         miflist = []
         for (idx, i) in enumerate(DWInlist):
-            call('mrconvert -coord 3 ' + idxlist[idx]
+            call('mrconvert -force -coord 3 ' + idxlist[idx]
                         + ' working.mif dwipretf' + str(idx) + '.mif',shell=True)
             call('dwiextract -bzero dwipretf' + str(idx)
-                        + '.mif - | mrconvert -coord 3 0 - b0pretf'
+                        + '.mif - | mrconvert -force -coord 3 0 - b0pretf'
                         + str(idx) + '.mif',shell=True)
             if idx > 0:
                 call('mrregister -nthreads 16 -type rigid -noreorientation -rigid rigidXform'
@@ -328,52 +328,53 @@ if app.args.prealign:
                 miflist.append('dwitf' + str(idx) + '.mif')
         DWImif = ' '.join(miflist)
         call('mrcat -axis 3 dwipretf0.mif ' + DWImif + ' dwitf.mif',shell=True)
-        call('mrconvert dwitf.mif working.mif',shell=True)
+        call('mrconvert -force dwitf.mif working.mif',shell=True)
 
 # epi + eddy current and motion correction
 # if number of input volumes is greater than 1, make a new acqp and index file.
 
 if app.args.eddy:
     print('...Beginning EDDY')
+    path2qc = app.args.output + '/eddy_qc'
     if app.args.rpe_none:
-        call('dwipreproc -eddy_options " --repol --data_is_shelled" -nthreads 16 -rpe_none -pe_dir '
-                     + app.args.pe_dir + ' working.mif dwiec.mif',shell=True)
+        call('dwipreproc -eddyqc_all ' + path2qc + ' -eddy_options " --repol --data_is_shelled" -rpe_none -pe_dir '
+                     + app.args.pe_dir + ' working.mif dwiec.mif -nthreads 16 -force',shell=True)
     elif app.args.rpe_pair:
-        call('dwiextract -bzero dwi.mif - | mrconvert -coord 3 0 - b0pe.mif',shell=True
+        call('dwiextract -bzero dwi.mif - | mrconvert -force -coord 3 0 - b0pe.mif',shell=True
                     )
         rpe_size = [int(s) for s in
                     image.Header(path.fromUser(app.args.rpe_pair,
                     True)).size()]
         if len(rpe_size) == 4:
-            call('mrconvert -coord 3 0 '
+            call('mrconvert -force -coord 3 0 '
                         + path.fromUser(app.args.rpe_pair, True)
                         + ' b0rpe.mif',shell=True)
         else:
-            call('mrconvert ' + path.fromUser(app.args.rpe_pair,
+            call('mrconvert -force ' + path.fromUser(app.args.rpe_pair,
                         True) + ' b0rpe.mif',shell=True)
         call('mrcat -axis 3 b0pe.mif b0rpe.mif rpepair.mif',shell=True)
-        call('dwipreproc -eddy_options " --repol --data_is_shelled" -rpe_pair -se_epi -nthreads 16 rpepair.mif -pe_dir '
-                     + app.args.pe_dir + ' working.mif dwiec.mif',shell=True)
+        call('dwipreproc -eddyqc_all ' + path2qc + ' -eddy_options " --repol --data_is_shelled" -rpe_pair -se_epi rpepair.mif -pe_dir '
+                     + app.args.pe_dir + ' working.mif dwiec.mif -nthreads 16 -force',shell=True)
     elif app.args.rpe_all:
-        call('mrconvert -export_grad_mrtrix grad.txt dwi.mif tmp.mif',shell=True
+        call('mrconvert -force -export_grad_mrtrix grad.txt dwi.mif tmp.mif',shell=True
                     )
-        call('mrconvert -grad grad.txt '
+        call('mrconvert -force -grad grad.txt '
                     + path.fromUser(app.args.rpe_all, True)
                     + ' dwirpe.mif',shell=True)
         call('mrcat -axis 3 working.mif dwirpe.mif dwipe_rpe.mif',shell=True
                     )
-        call('dwipreproc -eddy_options " --repol --data_is_shelled" -nthreads 16 -rpe_all -pe_dir '
-                     + app.args.pe_dir + ' dwipe_rpe.mif dwiec.mif',shell=True)
+        call('dwipreproc -eddyqc_all ' + path2qc + ' -eddy_options " --repol --data_is_shelled" -rpe_all -pe_dir '
+                     + app.args.pe_dir + ' dwipe_rpe.mif dwiec.mif -nthreads 16 -force',shell=True)
         run.function(os.remove, 'tmp.mif')
     elif app.args.rpe_header:
-        call('dwipreproc -eddy_options " --repol --data_is_shelled" -nthreads 16 -rpe_header working.mif dwiec.mif',shell=True
+        call('dwipreproc -eddyqc_all ' + path2qc + ' -eddy_options " --repol --data_is_shelled" -rpe_header working.mif dwiec.mif -nthreads 16 -force',shell=True
                     )
     elif not app.args.rpe_header and not app.args.rpe_all \
         and not app.args.rpe_pair:
         print('the eddy option must run alongside -rpe_header, -rpe_all, or -rpe_pair option')
         quit()
     run.function(os.remove, 'working.mif')
-    call('mrconvert dwiec.mif working.mif',shell=True)
+    call('mrconvert -force dwiec.mif working.mif',shell=True)
 
 # b1 bias field correction
 
@@ -387,7 +388,7 @@ if app.args.b1correct:
 
         miflist = []
         for (idx, i) in enumerate(DWInlist):
-            call('mrconvert -coord 3 ' + idxlist[idx]
+            call('mrconvert -force -coord 3 ' + idxlist[idx]
                         + ' working.mif dwiprebc' + str(idx) + '.mif',shell=True)
             call('dwibiascorrect -fsl dwiprebc' + str(idx)
                         + '.mif dwibc' + str(idx) + '.mif',shell=True)
@@ -395,7 +396,7 @@ if app.args.b1correct:
             DWImif = ' '.join(miflist)
         call('mrcat -axis 3 ' + DWImif + ' dwibc.mif',shell=True)
     run.function(os.remove, 'working.mif')
-    call('mrconvert dwibc.mif working.mif',shell=True)
+    call('mrconvert -force dwibc.mif working.mif',shell=True)
 
 # generate a final brainmask
 
@@ -416,7 +417,7 @@ if os.path.isfile('brain_mask.nii.gz'):
 
 if app.args.smooth or app.args.normalise:
     print('...Computing CSF mask')
-    call('mrconvert -force -export_grad_mrtrix grad.txt working.mif dwibc.nii',shell=True
+    call('mrconvert -export_grad_mrtrix grad.txt working.mif dwibc.nii',shell=True
                 )
     call('fast -n 4 -t 2 -o tissue brain' + fsl_suffix,shell=True)
     csfclass = []
@@ -431,7 +432,7 @@ if app.args.smooth or app.args.normalise:
     call('fslmaths tissue_pve_' + str(csfind) + fsl_suffix
                 + ' -thr 0.7 -bin CSFmask' + fsl_suffix,shell=True)
     if fsl_suffix.endswith('.nii.gz'):
-        call('mrconvert CSFmask' + fsl_suffix + ' CSFmask.nii',shell=True)
+        call('mrconvert -force CSFmask' + fsl_suffix + ' CSFmask.nii',shell=True)
 
 # smoothing (excluding CSF)
 
@@ -443,9 +444,9 @@ if app.args.smooth:
                      nargout=0)
     eng.quit()
     app.gotoTempDir()
-    call('mrconvert -grad grad.txt dwism.nii dwism.mif',shell=True)
+    call('mrconvert -force -grad grad.txt dwism.nii dwism.mif',shell=True)
     run.function(os.remove, 'working.mif')
-    call('mrconvert dwism.mif working.mif',shell=True)
+    call('mrconvert -force dwism.mif working.mif',shell=True)
 
 call('mrinfo -export_grad_fsl dwi_designer.bvec dwi_designer.bval working.mif',shell=True
             )
@@ -470,7 +471,7 @@ if app.args.rician:
         call('mrcalc working.mif 2 -pow lowbnoisemap.mif 2 -pow -sub -abs -sqrt - | mrcalc - -finite - 0 -if dwirc.mif',shell=True
                     )
     run.function(os.remove, 'working.mif')
-    call('mrconvert dwirc.mif working.mif',shell=True)
+    call('mrconvert -force dwirc.mif working.mif',shell=True)
 elif app.args.rician_lowsnr:
     print('...Beginning Rician correction')
     bvalu = np.unique(np.around(bval, decimals=-1))
@@ -485,7 +486,7 @@ elif app.args.rician_lowsnr:
     call('mrcalc working.mif 2 -pow lowbnoisemap.mif 2 -pow -sub -abs -sqrt - | mrcalc - -finite - 0 -if dwirc.mif',shell=True
                 )
     run.function(os.remove, 'working.mif')
-    call('mrconvert dwirc.mif working.mif',shell=True)
+    call('mrconvert -force dwirc.mif working.mif',shell=True)
 
 # b0 normalisation
 
@@ -496,7 +497,7 @@ if app.args.normalise:
     else:
         miflist = []
         for (idx, i) in enumerate(DWInlist):
-            call('mrconvert -coord 3 ' + idxlist[idx]
+            call('mrconvert -force -coord 3 ' + idxlist[idx]
                         + ' working.mif dwiprenm' + str(idx) + '.mif',shell=True)
             call('dwinormalise dwiprenm' + str(idx)
                         + '.mif CSFmask.nii dwinm' + str(idx) + '.mif')
@@ -504,7 +505,7 @@ if app.args.normalise:
             DWImif = ' '.join(miflist)
         call('mrcat -axis 3 ' + DWImif + ' dwinm.mif',shell=True)
     run.function(os.remove, 'working.mif')
-    call('mrconvert dwinm.mif working.mif',shell=True)
+    call('mrconvert -force dwinm.mif working.mif',shell=True)
 
 call('mrconvert -force -datatype float32le working.mif dwi_designer.nii',shell=True
             )
@@ -566,7 +567,7 @@ if app.args.DTIparams or app.args.DKIparams or app.args.WMTIparams:
     app.gotoTempDir()
 else:
     if app.args.datatype:
-        call('mrconvert -datatype ' + app.args.datatype + ' '
+        call('mrconvert -force -datatype ' + app.args.datatype + ' '
                     + path.toTemp('dwi_designer.nii', True) + ' '
                     + path.fromUser(app.args.output + '.nii', True),shell=True)
     else:

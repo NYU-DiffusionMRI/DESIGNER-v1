@@ -172,7 +172,6 @@ function [X, cnt] = createTensorOrder(order)
 
 end
 
-
 function [s, mask] = vectorize(S, mask)
     if nargin == 1
        mask = ~isnan(S(:,:,:,1));

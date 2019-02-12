@@ -1,8 +1,5 @@
-<<<<<<< HEAD
+
 function [fa, md, rd, ad, fe, mk,  rk, ak, kfa, mkt] = dki_parameters(dt, mask)
-=======
-function [fa, md, rd, ad, fe, mk,  rk, ak] = dki_parameters(dt, mask)
->>>>>>> dc4495ad32fb2eff3804278ce68cea52965cce99
     % diffusion and kurtosis tensor parameter calculation
     %
     % -----------------------------------------------------------------------------------
@@ -40,11 +37,8 @@ function [fa, md, rd, ad, fe, mk,  rk, ak] = dki_parameters(dt, mask)
     %  6. mk:                mean kurtosis
     %  7. rk:                radial kurtosis
     %  8. ak:                axial kurtosis
-<<<<<<< HEAD
     %  9. kfa:               kurtosis fractional anisotropy
     %  10. mkt:              mean kurtosis tensor
-=======
->>>>>>> dc4495ad32fb2eff3804278ce68cea52965cce99
     %
     % Important: The presence of outliers "black voxels" in the kurtosis maps 
     %            are we well-known, but inherent problem to DKI. Smoothing the 
@@ -119,7 +113,6 @@ parfor i = 1:nvoxels
     dirs = radialsampling(e1(:,i), 256)';
     akc = AKC(dt(:,i), dirs);
     rk(i) = mean(akc);
-<<<<<<< HEAD
     [kfa(i),mkt(i)] = ComputeKFA(dt(:,i),3,0)   % [0 3] define the range of
     %   kurotsis to use in the calculation of KFA
 end
@@ -135,25 +128,6 @@ rk  = vectorize(rk, mask);
 fe  = vectorize(e1, mask);
 kfa = vectorize(kfa, mask);
 mkt = vectorize(mkt, mask);
-=======
-end
-
-
-
-
-            
-            
-%% return maps
-fa = vectorize(fa, mask);
-md = vectorize(md, mask);
-ad = vectorize(ad, mask);
-rd = vectorize(rd, mask);
-mk = vectorize(mk, mask);
-ak = vectorize(ak, mask);
-rk = vectorize(rk, mask);
-fe = vectorize(e1, mask);
-
->>>>>>> dc4495ad32fb2eff3804278ce68cea52965cce99
 end
 
 function dirs = get256dirs()
@@ -514,7 +488,6 @@ for i = 1:size(S, 4)
 end
 end
 end
-<<<<<<< HEAD
 
 function [kfa,mkt] = ComputeKFA(dt,Kmax_final,Kmin_final)
 %
@@ -564,7 +537,3 @@ mkt=Wbar;
 mkt(mkt > Kmax_final) = Kmax_final;
 mkt(mkt < Kmin_final) = Kmin_final;
 end
-
-=======
-   
->>>>>>> dc4495ad32fb2eff3804278ce68cea52965cce99
