@@ -77,7 +77,7 @@ fprintf('Found %d possible images in %s\n',nFiles,studyPath);
 %   Initialize Parallel Data Queue
 parQ = parallel.pool.DataQueue;
 %   Initialize progress waitbar
-parWaitBar = waitbar(0,'Initializing sorting algorithm...',...
+parWaitBar = waitbar(0,'ETA: Calculating...',...
     'Name','Sorting dicoms');
 %   After receiving new data, update_progress() will be called
 fprintf('Sorting dicoms...');
@@ -198,8 +198,8 @@ for i = 1:length(subList)
     
     for j = 1:length(seriesIdx)
         %   Match modified strings for readibility with actual directory
-        matchIdx = contains(subSeries,seriesUniList(seriesIdx(j)));
-        seriesUniPath(j) = fullfile(outPath,subList{i},subSeries(matchIdx));
+        matchIdx = 
+        seriesUniPath(j) = fullfile(outPath,subList{i},seriesUniList(seriesIdx(j)));
     end
     desInput = sprintf(repInput,seriesUniPath{:});
     desOutput = sprintf(fullfile(desPath,subList{i}));
