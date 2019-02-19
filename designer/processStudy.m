@@ -18,26 +18,56 @@ addpath(fullfile(pwd,'dependencies'));
 %% Locate Study Directory
 %   Opens GUI to locate directory
 studyPath = uigetdir(pwd,'Select subject directory');
-studyDir = dir(studyPath);
+
+%% Check and Decompress Files if Present
+studyDirFolders = dir(studyPath);
+compressedFiles = vertcat(dir(fullfile(studyPath,'**/*.zip')),...
+    dir(fullfile(studyPath,'**/*.tar')),...
+    dir(fullfile(studyPath,'**/*.gz')));
+
+if length(compressedFiles) >= 1
+    parfor i = 1:length(compressedFiles)
+        %   Check file extension
+        [~,name,ext] = fileparts(fullfile(compressedFiles(i).folder,...
+            compressedFiles(i).name));
+        mkdir(fullfile(compressedFiles(i).folder,name));
+        try
+            if ext == '.zip';
+                unzip(fullfile(compressedFiles(i).folder,...
+                    compressedFiles(i).name),...
+                    fullfile(compressedFiles(i).folder));
+            elseif ext == '.tar'
+                untar(fullfile(compressedFiles(i).folder,...
+                    compressedFiles(i).name),...
+                    fullfile(compressedFiles(i).folder));
+            elseif ext == '.gz'
+                gunzip(fullfile(compressedFiles(i).folder,...
+                    compressedFiles(i).name),...
+                    fullfile(compressedFiles(i).folder));
+            else
+            end
+        catch
+            fprintf('Corruption detected: skipping uncompression of %s',name);
+            continue
+        end
+    end
+end
+
+%   Snap picture of original directory
 studyDirFolders = dir(studyPath);
 
 % Clean it up
-for i = 1:length(studyDir)
+for i = 1:length(studyDirFolders)
     rmPattern = [".","..",".DS_Store"];
-    %   Check for non-directories
-    if studyDir(i).isdir ~= 1
+    %   Check for '.'
+    if any(contains(studyDirFolders(i).name,rmPattern));
         rmIdx(i) = 1;
-        
-        %   Check for '.'
-    elseif any(contains(studyDir(i).name,rmPattern));
-        rmIdx(i) = 1;
-        
     else
         %   If nothing found, don't mark for deletion
         rmIdx(i) = 0;
     end
 end
-studyDir(rmIdx ~= 0) = [];   %   Apply deletion filter
+studyDirFolders(rmIdx ~= 0) = [];   %   Apply deletion filter
 
 %   Assign Output
 [fp,~,~] = fileparts(studyPath);
@@ -73,7 +103,6 @@ end
 studyDir(rmIdx ~= 0) = [];   %   Apply deletion filter
 nFiles = length(studyDir);
 fprintf('Found %d possible images in %s\n',nFiles,studyPath);
-
 %   Initialize Parallel Data Queue
 parQ = parallel.pool.DataQueue;
 %   Initialize progress waitbar
@@ -192,14 +221,25 @@ for i = 1:length(subList)
     for j = 1:length(subSeriesDir)
         subSeries{j} = subSeriesDir(j).name;
     end
-        %   Clean up to remove '.' and '..'
+    %   Clean up to remove '.' and '..'
     subSeries(strcmp(subSeries(:),'.')) = [];
     subSeries(strcmp(subSeries(:),'..')) = [];
     
     for j = 1:length(seriesIdx)
         %   Match modified strings for readibility with actual directory
-        matchIdx = contains(subSeries,seriesUniList(seriesIdx(j)));
-        seriesUniPath(j) = fullfile(outPath,subList{i},subSeries(matchIdx));
+        matchIdx = startsWith(subSeries,seriesUniList(seriesIdx(j)));
+        %   If there are more than one strings, pick the one that most
+        %   closely matches based on euclidean distance
+        if nnz(matchIdx) > 1
+            matchLoc = find(matchIdx);
+            for k = 1:length(matchLoc)
+                strDist(k) = sqrt(strlength(seriesUniList(seriesIdx(j)))...
+                    ^2 + strlength(subSeries(matchLoc(k)))^2);
+            end
+        end
+        [~,matchIdx] = min(strDist);
+        seriesUniPath(j) = fullfile(outPath,subList{i},...
+            subSeries(matchLoc(matchIdx)));
     end
     desInput = sprintf(repInput,seriesUniPath{:});
     desOutput = sprintf(fullfile(desPath,subList{i}));
@@ -218,7 +258,7 @@ end
         else
             n_completed = n_completed + 1;
         end
-        %   Calculate ETA
+        %   Calculate percentage
         parPercentage = n_completed/nFiles*100;
         %   Update waitbar
         waitbar(n_completed/nFiles,parWaitBar,...
