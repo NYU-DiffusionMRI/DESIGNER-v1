@@ -523,6 +523,9 @@ if app.args.DTIparams or app.args.DKIparams or app.args.WMTIparams:
     shutil.copyfile(path.toTemp('dwi_designer.bval', True),
                     path.fromUser(app.args.output + '/dwi_designer.bval'
                     , True))
+    shutil.copyfile(path.toTemp('fullnoisemap.nii', True),
+                    path.fromUser(app.args.output + '/fullnoisemap.nii'
+                    , True))
 
     print('...Beginning tensor estimation')
     os.chdir(designer_root)
@@ -577,5 +580,8 @@ else:
                     path.fromUser(app.args.output + '.bvec', True))
     shutil.copyfile(path.toTemp('dwi_designer.bval', True),
                     path.fromUser(app.args.output + '.bval', True))
+    shutil.copyfile(path.toTemp('fullnoisemap.nii', True),
+                    path.fromUser(app.args.output + '/fullnoisemap.nii'
+                    , True))
 
 app.complete()
