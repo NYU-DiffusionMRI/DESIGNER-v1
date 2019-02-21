@@ -236,10 +236,14 @@ for i = 1:length(subList)
                 strDist(k) = sqrt(strlength(seriesUniList(seriesIdx(j)))...
                     ^2 + strlength(subSeries(matchLoc(k)))^2);
             end
+            [~,matchIdx] = min(strDist);
+            seriesUniPath(j) = fullfile(outPath,subList{i},...
+                subSeries(matchLoc(matchIdx)));
+        else
+            seriesUniPath(j) = fullfile(outPath,subList{i},...
+                subSeries(matchIdx));
         end
-        [~,matchIdx] = min(strDist);
-        seriesUniPath(j) = fullfile(outPath,subList{i},...
-            subSeries(matchLoc(matchIdx)));
+        
     end
     desInput = sprintf(repInput,seriesUniPath{:});
     desOutput = sprintf(fullfile(desPath,subList{i}));
