@@ -117,7 +117,7 @@ parfor i = 1:nFiles
     try
         tmp = dicominfo(fullfile(studyDir(i).folder,studyDir(i).name));
     catch
-        stop
+        continue
     end
     %   Replace all '.' in protocol names with '_'
     tmp.ProtocolName = strrep(tmp.ProtocolName,'.','_');
@@ -254,7 +254,7 @@ for i = 1:length(subList)
     
     %     runDesigner = sprintf('./designer.sh %s %s',...
     %         desInput,desOutput);
-    runDesigner = sprintf('source activate %s && python designer.py -denoise -extent 5,5,5 -degibbs -rician -mask -prealign -smooth 1.25 -eddy -rpe_header -DKIparams -DTIparams %s %s',...
+    runDesigner = sprintf('source activate %s && python designer.py -denoise -extent 5,5,5 -degibbs -rician -mask -prealign -eddy -rpe_header -smooth 1.25 -DKIparams -DTIparams %s %s',...
         envName,desInput,desOutput);
     [s,t] = system(runDesigner,'-echo');
 end
