@@ -166,12 +166,16 @@ subList = {subList(:).name};
 
 %% Unique Protocol List
 seriesNames = dir(fullfile(outPath,subList{1}));
-for i = 2:length(subList)
-    tmp = dir(fullfile(outPath,subList{i}));
-    seriesNames = vertcat(seriesNames,tmp);
-end
-for i = 1:length(seriesNames)
-    seriesList{i} = seriesNames(i).name;
+if length(seriesNames) > 1
+    for i = 2:length(subList)
+        tmp = dir(fullfile(outPath,subList{i}));
+        seriesNames = vertcat(seriesNames,tmp);
+    end
+    for i = 1:length(seriesNames)
+        seriesList{i} = seriesNames(i).name;
+    end
+else
+    seriesList = seriesNames.name;
 end
 
 %   Clean up to remove '.' and '..'
