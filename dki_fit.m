@@ -69,8 +69,6 @@ function [b0, dt] = dki_fit(dwi, grad, mask, constraints, outliers, maxbval)
     dwi = dwi(:,:,:,list);
     grad = grad(list, :);
     
-    
-   
     %% parameter checks 
     dwi = double(dwi);
     dwi(dwi<=0)=eps;
