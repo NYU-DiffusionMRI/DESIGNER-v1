@@ -22,6 +22,6 @@ python designer.py \
 -mask \
 -prealign \
 -smooth 1.25 \
--eddy -rpe_header \
+-outliers \
 -DKIparams -DTIparams \
 ${1} ${2}
