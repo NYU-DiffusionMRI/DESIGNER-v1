@@ -335,7 +335,7 @@ if app.args.prealign:
 
 if app.args.eddy:
     print('...Beginning EDDY')
-    path2qc = app.args.output + '/eddy_qc'
+    path2qc = app.args.output + '/QC/Eddy'
     if app.args.rpe_none:
         call('dwipreproc -eddyqc_all ' + path2qc + ' -eddy_options " --repol --data_is_shelled" -rpe_none -pe_dir '
                      + app.args.pe_dir + ' working.mif dwiec.mif -nthreads 16 -force',shell=True)
