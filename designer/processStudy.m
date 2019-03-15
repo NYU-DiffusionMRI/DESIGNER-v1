@@ -9,6 +9,7 @@ function processStudy(studyPath);
 %   Date Created: 02/14/2019
 %   Matlab 2018b
 
+warning off;
 %% Conda Variables
 envName = 'py36';
 
@@ -254,9 +255,124 @@ for i = 1:length(subList)
     
     %     runDesigner = sprintf('./designer.sh %s %s',...
     %         desInput,desOutput);
-    runDesigner = sprintf('source activate %s && python designer.py -denoise -extent 5,5,5 -degibbs -rician -mask -prealign -eddy -rpe_header -smooth 1.25 -DKIparams -DTIparams %s %s',...
+    %     runDesigner = sprintf('source activate %s && python designer.py -denoise -extent 5,5,5 -degibbs -rician -mask -prealign -eddy -rpe_header -smooth 1.25 -DKIparams -DTIparams %s %s',...
+    %         envName,desInput,desOutput);
+    runDesigner = sprintf('source activate %s && python designer.py -denoise -extent 5,5,5 -degibbs -mask -rician -prealign -smooth 1.25 -DKIparams -DTIparams %s %s',...
         envName,desInput,desOutput);
     [s,t] = system(runDesigner,'-echo');
+    
+    %%  Rename Outputs
+    allFiles = dir(desOutput);
+    allFiles = allFiles(~startsWith({allFiles.name},'.'));
+    for j = 1:length(allFiles)
+        tmp = strsplit(allFiles(j).name,'.');
+        newName = [tmp{1} '_' subList{i} '.' tmp{2}];
+        movefile(fullfile(allFiles(j).folder,allFiles(j).name),...
+            fullfile(allFiles(j).folder,newName));
+    end
+    
+    %% Create QC Metrics
+    mkdir(fullfile(desOutput,'QC'));
+    
+    %   Load all files
+    bvalPath = dir(fullfile(desOutput,'*bval'));
+    bvalPath = fullfile(bvalPath.folder,bvalPath.name);
+    bval = round(single(load(bvalPath)));
+    
+%     bvecPath = dir(fullfile(desOutput,'*bvec'));
+%     bvecPath = fullfile(bvecPath.folder,bvecPath.name);
+    
+    procPath = dir(fullfile(desOutput,['dwi_designer_' subList{i} '.nii']));
+    procPath = fullfile(procPath.folder,procPath.name);
+    Iproc = niftiread(procPath);
+    
+    rawPath = dir(fullfile(desOutput,'dwi_raw*'));
+    rawPath = fullfile(rawPath.folder,rawPath.name);
+    Iraw = niftiread(rawPath);
+    
+    noisePath = dir(fullfile(desOutput,'fullnoisemap*'));
+    noisePath = fullfile(noisePath.folder,noisePath.name);
+    Inoise = niftiread(noisePath);
+    
+    brainPath = dir(fullfile(desOutput,'brain_mask*'));
+    brainPath = fullfile(brainPath.folder,brainPath.name);
+    brainMask = logical(niftiread(brainPath));
+    
+%     csfPath = dir(fullfile(desOutput,'CSFmask*'));
+%     csfPath = fullfile(csfPath.folder,csfPath.name);
+%     csfMask = logical(niftiread(csfPath));
+    
+    %   Create logical indexes of bvalues
+    listBval = unique(bval);
+    bIdx = zeros(length(listBval),length(bval));
+    for j = 1:length(listBval)
+        bIdx(j,:) = bval == listBval(j);
+    end
+    bIdx = logical(bIdx);
+    
+    %   Form index vector for mean 4D array
+    nB0 = find(bIdx(1,:));
+    meanIdx = horzcat(repmat(listBval(1),[1 numel(nB0)]),listBval(2:end));
+    
+    %   Compute mean array by initializing it first
+    
+    meanProc = Iproc(:,:,:,nB0) ./ Inoise;
+    meanRaw = Iraw(:,:,:,nB0) ./ Inoise;
+    
+    for j = 1:length(listBval)
+        if j == 1;
+            %   Skip B0 because already concatenated
+            continue;
+        else
+            meanProc(:,:,:,end+j) = mean(Iproc(:,:,:,bIdx(j,:)),4)./Inoise;
+            meanRaw(:,:,:,end+j) = mean(Iraw(:,:,:,bIdx(j,:)),4)./Inoise;
+        end
+    end
+    
+    %   Calculate Log
+    meanProc = 10*log10(meanProc);
+    meanRaw = 10*log10(meanRaw);
+    
+    %   Create plots
+    nbins = 100;
+    figure;
+    for j = 1:length(listBval)
+        [Nproc Eproc] = histcounts(meanProc(:,:,:,meanIdx == listBval(j)),...
+            nbins,'Normalization','Probability');
+        [Nraw Eraw] = histcounts(meanRaw(:,:,:,meanIdx == listBval(j)),...
+            nbins,'Normalization','Probability');
+        IQRproc = iqr(meanProc(:,:,:,meanIdx == listBval(j)),'all');
+        IQRraw = iqr(meanRaw(:,:,:,meanIdx == listBval(j)),'all');
+        for k = 1:nbins
+            Mproc(k) = median([Eproc(k) Eproc(k+1)]);
+            Mraw(k) = median([Eraw(k) Eraw(k+1)]);
+        end
+        subplot(1,length(listBval),j)
+        hold on;
+        plot(Mproc,Nproc)
+        plot(Mraw,Nraw);
+        hold off;
+        xlabel('SNR');
+        ylabel('Normalized Voxel Count');
+        legend('SNR: Designer Output','SNR: Designer Input');
+        title(sprintf('B%d',listBval(j)));
+        grid on; box on;
+    end
+    
+    
+    %----------------------------------------------------------------------
+    %   Testing Phase
+    %----------------------------------------------------------------------
+    meanProc = zeros(size(Iproc,1),size(Iproc,2),size(Iproc,3),length(meanIdx));
+    for j = 1:length(listBval)
+        meanProc(:,:,:,meanIdx == listBval(j)) = Iproc(:,:,:,
+    
+    
+    
+    
+    
+    
+    
 end
 
 %% PARFOR Progress Calculation

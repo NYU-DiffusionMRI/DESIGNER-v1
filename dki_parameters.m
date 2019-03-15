@@ -94,6 +94,7 @@ for i = 1:nvoxels
     e1(:, i) = eigvec(:, 1); 
 end
 md = (l1+l2+l3)/3;
+
 rd = (l2+l3)/2;
 ad = l1;
 fa = sqrt(1/2).*sqrt((l1-l2).^2+(l2-l3).^2+(l3-l1).^2)./sqrt(l1.^2+l2.^2+l3.^2);

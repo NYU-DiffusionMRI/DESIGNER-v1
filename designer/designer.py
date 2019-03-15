@@ -288,6 +288,8 @@ else:
     extent = '5,5,5'
 
 call('mrconvert -force dwi.mif working.mif',shell=True)
+print('...Saving raw NIFTI')
+call('mrconvert -force -datatype float32le working.mif dwi_raw.nii',shell=True)
 
 # denoising
 
@@ -526,6 +528,15 @@ if app.args.DTIparams or app.args.DKIparams or app.args.WMTIparams:
     shutil.copyfile(path.toTemp('fullnoisemap.nii', True),
                     path.fromUser(app.args.output + '/fullnoisemap.nii'
                     , True))
+    shutil.copyfile(path.toTemp('dwi_raw.nii', True),
+                    path.fromUser(app.args.output + '/dwi_raw.nii'
+                    , True))
+    shutil.copyfile(path.toTemp('CSFmask.nii', True),
+                    path.fromUser(app.args.output + '/CSFmask.nii'
+                    , True))
+    shutil.copyfile(path.toTemp('brain_mask.nii', True),
+                    path.fromUser(app.args.output + '/brain_mask.nii'
+                    , True))                                                
 
     print('...Beginning tensor estimation')
     os.chdir(designer_root)

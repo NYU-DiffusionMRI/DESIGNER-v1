@@ -135,9 +135,10 @@ function [b0, dt] = dki_fit(dwi, grad, mask, constraints, outliers, maxbval)
             try
                 in_ = outliers(:, i) == 0;
                 wi = w(:,i); Wi = diag(wi(in_));             
-                [dt(:, i),resnorm,residual,exitflag,output(i),lambda] = lsqlin(Wi*b(in_, :),Wi*log(dwi(in_,i)),-C, d, [],[],[],[],[],options);
+                [dt(:, i),~,~,~,output,~] = lsqlin(Wi*b(in_, :),Wi*log(dwi(in_,i)),-C, d, [],[],[],[],[],options);
+                test(i)=output.constrviolation;
             catch
-                fail(i) = 1;
+  
                 dt(:, i) = 0;
             end
         end
