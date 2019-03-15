@@ -115,7 +115,7 @@ parfor i = 1:nvoxels
     akc = AKC(dt(:,i), dirs);
     rk(i) = mean(akc);
     [kfa(i),mkt(i)] = ComputeKFA(dt(:,i),3,0)   % [0 3] define the range of
-    %   kurotsis to use in the calculation of KFA
+    %   kurtosis to use in the calculation of KFA
 end
                
 %% return maps
