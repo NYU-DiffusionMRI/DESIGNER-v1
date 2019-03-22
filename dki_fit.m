@@ -1,4 +1,4 @@
-function [b0, dt] = dki_fit(dwi, grad, mask, constraints, outliers, maxbval)
+function [b0, dt, violMask] = dki_fit(dwi, grad, mask, constraints, outliers, maxbval)
 % Diffusion Kurtosis Imaging tensor estimation using
 % (constrained) weighted linear least squares estimation
 % -----------------------------------------------------------------------------------
@@ -37,7 +37,7 @@ function [b0, dt] = dki_fit(dwi, grad, mask, constraints, outliers, maxbval)
 %       Following constraints are available:
 %           c1: Dapp > 0
 %           c2: Kapp > 0
-%           c3: Kapp < b/(3*Dapp)
+%           c3: Kapp < 3/(b*Dapp)
 %       default: [0 1 0]
 %     5. maxbval (scalar; default = 2.5ms/um^2), puts an upper bound on the b-values being
 %     used in the analysis.
@@ -79,6 +79,8 @@ end
 grad = double(grad);
 grad(:,1:3) = bsxfun(@rdivide,grad(:,1:3),sqrt(sum(grad(:,1:3).^2,2))); grad(isnan(grad)) = 0;
 bval = grad(:, 4);
+largestBval = max(bval);
+imgDirs = length(find(bval == largestBval));
 if ~exist('mask','var') || isempty(mask)
     mask = true(x, y, z);
 end
@@ -156,40 +158,61 @@ else
     end
 end
 
-%   Unconstrained LLS in location where constraints are violated
-dtV = dt;
-if nnz(viol) > 1;
-    dtV = dt;
-    violIdx = find(viol);
-    violFlag = 1;
-    for i = 1:length(violIdx)
-        j = violIdx(i);
-        in_ = outliers(:, j) == 0;
-        b_ = b(in_, :);
-        if isempty(b_) || cond(b(in_, :))>1e15
-            dtV(:, j) = NaN
-        else
-            wi = w(:,j); Wi = diag(wi(in_));
-            logdwii = log(dwi(in_,j));
-            dtV(:,j) = (Wi*b_)\(Wi*logdwii);
-        end
-    end
-else
-    violFlag = 0;
-end
-violFlag = logical(violFlag);
-
 b0 = exp(dt(1,:));
 dt = dt(2:22, :);
 D_apprSq = 1./(sum(dt([1 4 6],:),1)/3).^2;
 dt(7:21,:) = dt(7:21,:) .* D_apprSq(ones(15,1),:);
 b0 = vectorize(b0, mask);
-dt = vectorize(dt, mask);
+[akc, adc] = AKC(dt, grad(:,1:3));
+adc = adc(find(bval == largestBval),:);
+akc = akc(find(bval == largestBval),:);
 
+%   Check and count direction violations in AKC
+%   Iterates along all voxels and count the total number of violations
+%   occuring per voxel. Every constraint violation is a unique violation so
+%   total violations per voxel is sum of direction violations in C1, C2 and
+%   C3.
 
-
+if any(viol)
+    dirViol = zeros(3,nvoxels);
+    violIdx = find(viol);
+    switch any(constraints)
+        case constraints(1) > 0
+            for i = 1:length(violIdx)
+                dirViol(1,violIdx(i)) = numel(find(adc(:,violIdx(i)) < 0));
+            end
+        case constraints(2) > 0
+            for i = 1:length(violIdx)
+                dirViol(2,violIdx(i)) = numel(find(akc(:,violIdx(i)) < 0));
+            end
+        case constraints(3) > 0
+            for i = 1:length(violIdx)
+                dirViol(3,violIdx(i)) = numel(find(akc(:,violIdx(i)) > ...
+                    (3 / largestBval * akc(:,violIdx(i)))));
+            end
+    end
+    sumViol = sum(dirViol,1);
+    % A legal violation is one where there are more than 50% directional
+    % violations and at least 15 directional violations
+    parfor i = 1:length(sumViol)
+        violProp = (sumViol(i) / imgDirs) > 0.50;
+        if violProp
+            violMask(i) = 1;
+        elseif imgDirs - sumViol(i) > 15    % at least 15 good directions
+             violMask(i) = 0;
+        else
+            violMask(i) = 1;
+        end
+    end
+else
+    ;
 end
 
+%   Reshape violation logical vector into a logical mask. Locations where a
+%   voxel = 1 is where a violation occured.
+violMask = logical(reshape(violMask,[x,y,z]));
+dt = vectorize(dt, mask);
+end
 
 function [akc, adc] = AKC(dt, dir)
 
@@ -200,7 +223,7 @@ md = sum(dt([1 4 6],:),1)/3;
 
 ndir  = size(dir, 1);
 T =  W_cnt(ones(ndir, 1), :).*dir(:,W_ind(:, 1)).*dir(:,W_ind(:, 2)).*dir(:,W_ind(:, 3)).*dir(:,W_ind(:, 4));
- 
+
 akc =  T*dt(7:21, :);
 akc = (akc .* repmat(md.^2, [size(adc, 1), 1]))./(adc.^2);
 end
