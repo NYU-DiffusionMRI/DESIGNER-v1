@@ -8,12 +8,13 @@ function V = localizedMedFilter(I, violMask, sz)
 %   Inputs:
 %       I        --> 3D parameter map or any 3D image
 %       violMask --> Binary mask containing locations of directional
-%                      violations or anywhere a median filter is to be
-%                      applied.
+%                    violations or anywhere a median filter is to be
+%                    applied.
 %   Outputs:
-%       V --> Output 3D image from the application of median filter.
+%       V        --> Output 3D image from the application of median filter.
 %
 %   Author: Siddhartha Dhiman
+%   Email:  dhiman@musc.edu
 %   Date:   03/22/2019
 %   Created with MATLAB 2018b
 
@@ -24,10 +25,10 @@ I = double(I);
 V = I;
 
 %% Perform Checks
-if any(size(I) ~= size(violMask))
-    error('Violation mask and input image size is not the same.')
+if prod(size(I)) ~= prod(size(violMask))
+    error('Violation mask and parameter map sizes are not equal');
 else
-    filterObject = zeros(sz,sz,sz);
+filterObject = zeros(sz,sz,sz);
 end
 
 %% Create Filter
@@ -44,17 +45,18 @@ iterZ = centralIdx:(Iz - (centralIdx-1));
 % shifts up by one voxel on the y-axis and scans along the x-axis again.
 % AFter scanning the entire xy-plane, it moves one voxel up the z-plane and
 % rescans the xy-plane. It does this until the entire image is scanned.
+d2move = abs(sz - centralIdx);
 for z2 = iterZ
-    z1 = z2 - 1;
-    z3 = z2 + 1;
+    z1 = z2 - d2move;
+    z3 = z2 + d2move;
     
     for y2 = iterY
-        y1 = y2 - 1;
-        y3 = y2 + 1;
+        y1 = y2 - d2move;
+        y3 = y2 + d2move;
         
         for x2 = iterX
-            x1 = x2 - 1;
-            x3 = x2 + 1;
+            x1 = x2 - d2move;
+            x3 = x2 + d2move;
             
             %% Determine Median Values
             

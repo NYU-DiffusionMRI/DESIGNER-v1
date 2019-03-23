@@ -22,6 +22,6 @@ python designer.py \
 -mask \
 -prealign \
 -smooth 1.25 \
--outliers \
+-fit_constraints 1,1,1 \
 -DKIparams -DTIparams \
 ${1} ${2}

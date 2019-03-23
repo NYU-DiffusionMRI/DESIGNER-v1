@@ -199,7 +199,7 @@ if any(viol)
         if violProp
             violMask(i) = 1;
         elseif imgDirs - sumViol(i) > 15    % at least 15 good directions
-             violMask(i) = 0;
+            violMask(i) = 0;
         else
             violMask(i) = 1;
         end
@@ -210,7 +210,19 @@ end
 
 %   Reshape violation logical vector into a logical mask. Locations where a
 %   voxel = 1 is where a violation occured.
-violMask = logical(reshape(violMask,[x,y,z]));
+
+violMask = vectorize(violMask, mask);
+if numel(find(isnan(violMask))) == numel(find(mask == 0))
+    % If the number of nans in violations is the same size as number of
+    % zeros in mask, there are no violations because of a bug in
+    % vectorizing binary images that have no 1's in them. This is a
+    % workaroud.
+    violMask = zeros(x,y,z);
+else
+    violMask = violMask;
+end
+violMask = logical(violMask);
+disp(sprintf('...found %d constraint violations',nnz(violMask)));
 dt = vectorize(dt, mask);
 end
 
@@ -263,5 +275,4 @@ else
         s(i, :) = Si(mask(:));
     end
 end
-end
-
+end 

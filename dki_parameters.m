@@ -1,5 +1,5 @@
 
-function [fa, md, rd, ad, fe, mk,  rk, ak, kfa, mkt] = dki_parameters(dt, mask, violMask)
+function [fa, md, rd, ad, fe, mk, rk, ak, kfa, mkt] = dki_parameters(dt, mask, violMask)
     % diffusion and kurtosis tensor parameter calculation
     %
     % -----------------------------------------------------------------------------------
@@ -119,16 +119,16 @@ parfor i = 1:nvoxels
 end
                
 %% return maps
-fa  = vectorize(localizedMedFilter(fa,violMask,3), mask);
-md  = vectorize(localizedMedFilter(md,violMask,3), mask);
-ad  = vectorize(localizedMedFilter(ad,violMask,3), mask);
-rd  = vectorize(localizedMedFilter(rd,violMask,3), mask);
-mk  = vectorize(localizedMedFilter(mk,violMask,3), mask);
-ak  = vectorize(localizedMedFilter(ak,violMask,3), mask);
-rk  = vectorize(localizedMedFilter(rk,violMask,3), mask);
-fe  = vectorize(localizedMedFilter(e1,violMask,3), mask);
-kfa = vectorize(localizedMedFilter(kfa,violMask,3), mask);
-mkt = vectorize(localizedMedFilter(mkt,violMask,3), mask);
+fa  = localizedMedFilter(vectorize(fa, mask),violMask,3);
+md  = localizedMedFilter(vectorize(md, mask),violMask,3);
+ad  = localizedMedFilter(vectorize(ad, mask),violMask,3);
+rd  = localizedMedFilter(vectorize(rd, mask),violMask,3);
+mk  = localizedMedFilter(vectorize(mk, mask),violMask,3);
+ak  = localizedMedFilter(vectorize(ak, mask),violMask,3);
+rk  = localizedMedFilter(vectorize(rk, mask),violMask,3);
+fe  = vectorize(e1, mask);
+kfa = localizedMedFilter(vectorize(kfa, mask),violMask,3);
+mkt = localizedMedFilter(vectorize(mkt, mask),violMask,3);
 end
 
 function dirs = get256dirs()

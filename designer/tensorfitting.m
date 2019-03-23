@@ -41,10 +41,10 @@ if detectoutliers
     nii.hdr.dime.dim(5) = ndwis;
     nii.hdr.dime.pixdim(5) = pixdim5;
     nii.img = outliers;  save_untouch_nii(nii,fullfile(root,'irwlls_out.nii'));
-    disp(['... fitting with constraints ',num2str(constraints)])
+    disp(['...fitting with constraints ',num2str(constraints)])
     [b0,dt,violMask] = dki_fit(dwi,[bvec,bval],mask,constraints,outliers,maxbval);
 else
-    disp(['... fitting with constraints ',num2str(constraints)])
+    disp(['...fitting with constraints ',num2str(constraints)])
     [b0,dt,violMask] = dki_fit(dwi,[bvec,bval],mask,constraints,[],maxbval);
 end
 
@@ -78,7 +78,7 @@ if cumulants
 end
 
 disp('...getting DTI and DKI params')
-[fa, md, rd, ad, fe, mk, rk, ak, kfa, mkt] = dki_parameters(dt,mask);
+[fa, md, rd, ad, fe, mk, rk, ak, kfa, mkt] = dki_parameters(dt,mask,violMask);
 fe = cat(4,fa.*fe(:,:,:,1),fa.*fe(:,:,:,2),fa.*fe(:,:,:,3));
 
 if dti
@@ -209,7 +209,7 @@ end
     end
 
     disp('...getting DTI and DKI params')
-    [fa, md, rd, ad, fe, mk, rk, ak] = dki_parameters(dt,mask);
+    [fa, md, rd, ad, fe, mk, rk, ak] = dki_parameters(dt,mask,violMask);
     fe = cat(4,fa.*fe(:,:,:,1),fa.*fe(:,:,:,2),fa.*fe(:,:,:,3));
 
     if dti
@@ -347,6 +347,5 @@ save(fullfile(outdir,'KT.mat'),'KT');
 
 %   Save violation mask
 nii.img = violMask; nii.hdr.dime.glmax = max(b0(:)); save_untouch_nii(nii,fullfile(outdir,'violation_mask.nii'));
-
 end
 
