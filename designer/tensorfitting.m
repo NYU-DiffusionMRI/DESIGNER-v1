@@ -173,10 +173,10 @@ end
         nii.hdr.dime.pixdim(5) = pixdim5;
         nii.img = outliers;  save_untouch_nii(nii,fullfile(root,'irwlls_out.nii'));
         disp(['... fitting with constraints ',num2str(constraints)])
-        [b0,dt] = dki_fit(dwi,[bvec,bval],mask,constraints,outliers,maxbval);
+        [b0,dt,violMask] = dki_fit(dwi,[bvec,bval],mask,constraints,outliers,maxbval);
     else
         disp(['... fitting with constraints ',num2str(constraints)])
-        [b0,dt] = dki_fit(dwi,[bvec,bval],mask,constraints,[],maxbval);
+        [b0,dt,violMask] = dki_fit(dwi,[bvec,bval],mask,constraints,[],maxbval);
     end
 
     if akc

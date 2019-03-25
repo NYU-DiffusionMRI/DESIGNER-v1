@@ -165,7 +165,7 @@ dt(7:21,:) = dt(7:21,:) .* D_apprSq(ones(15,1),:);
 b0 = vectorize(b0, mask);
 [akc, adc] = AKC(dt, grad(:,1:3));
 adc = adc(find(bval == largestBval),:);
-akc = akc(find(bval == largestBval),:);
+ akc = akc(find(bval == largestBval),:);
 
 %   Check and count direction violations in AKC
 %   Iterates along all voxels and count the total number of violations
@@ -176,20 +176,15 @@ akc = akc(find(bval == largestBval),:);
 if any(viol)
     dirViol = zeros(3,nvoxels);
     violIdx = find(viol);
-    switch any(constraints)
-        case constraints(1) > 0
-            for i = 1:length(violIdx)
-                dirViol(1,violIdx(i)) = numel(find(adc(:,violIdx(i)) < 0));
-            end
-        case constraints(2) > 0
-            for i = 1:length(violIdx)
-                dirViol(2,violIdx(i)) = numel(find(akc(:,violIdx(i)) < 0));
-            end
-        case constraints(3) > 0
-            for i = 1:length(violIdx)
-                dirViol(3,violIdx(i)) = numel(find(akc(:,violIdx(i)) > ...
-                    (3 / largestBval * akc(:,violIdx(i)))));
-            end
+    
+    for i = 1:length(violIdx)
+        %   For constraint(1)
+        dirViol(1,violIdx(i)) = numel(find(adc(:,violIdx(i)) < 0));
+        %   For constraint(2)
+        dirViol(2,violIdx(i)) = numel(find(akc(:,violIdx(i)) < 0));
+        %   For constraint(3)
+        dirViol(3,violIdx(i)) = numel(find(akc(:,violIdx(i)) > ...
+            (3 / largestBval * akc(:,violIdx(i)))));
     end
     sumViol = sum(dirViol,1);
     % A legal violation is one where there are more than 50% directional
@@ -210,17 +205,8 @@ end
 
 %   Reshape violation logical vector into a logical mask. Locations where a
 %   voxel = 1 is where a violation occured.
-
 violMask = vectorize(violMask, mask);
-if numel(find(isnan(violMask))) == numel(find(mask == 0))
-    % If the number of nans in violations is the same size as number of
-    % zeros in mask, there are no violations because of a bug in
-    % vectorizing binary images that have no 1's in them. This is a
-    % workaroud.
-    violMask = zeros(x,y,z);
-else
-    violMask = violMask;
-end
+violMask(isnan(violMask)) = 0;
 violMask = logical(violMask);
 disp(sprintf('...found %d constraint violations',nnz(violMask)));
 dt = vectorize(dt, mask);
@@ -275,4 +261,4 @@ else
         s(i, :) = Si(mask(:));
     end
 end
-end 
+end
