@@ -65,7 +65,7 @@ for z2 = iterZ
             
             % NaN the central value to prevent it from being part of the
             % filter
-            tmp(2,2,2) = NaN;
+            tmp(centralIdx,centralIdx,centralIdx) = NaN;
             
             if violMask(x2,y2,z2) == 1
                 V(x2,y2,z2) = nanmedian(tmp,'all');
