@@ -33,6 +33,7 @@ end
 
 %% Create Filter
 % Distance from centroid to edges of 3D box filter
+centralIdx = median(1:sz);
 d2move = abs(sz - centralIdx);
 
 violIdx = find(violMask);
