@@ -346,6 +346,6 @@ save(fullfile(outdir,'DT.mat'),'DT');
 save(fullfile(outdir,'KT.mat'),'KT');
 
 %   Save violation mask
-nii.img = violMask; nii.hdr.dime.glmax = max(b0(:)); save_untouch_nii(nii,fullfile(outdir,'violation_mask.nii'));
+nii.img = violMask; nii.hdr.dime.glmax = max(b0(:)); save_untouch_nii(nii,fullfile(outdir,'QC','violation_mask.nii'));
 end
 
