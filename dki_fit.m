@@ -165,7 +165,7 @@ dt(7:21,:) = dt(7:21,:) .* D_apprSq(ones(15,1),:);
 b0 = vectorize(b0, mask);
 [akc, adc] = AKC(dt, grad(:,1:3));
 adc = adc(find(bval == largestBval),:);
- akc = akc(find(bval == largestBval),:);
+akc = akc(find(bval == largestBval),:);
 
 %   Check and count direction violations in AKC
 %   Iterates along all voxels and count the total number of violations

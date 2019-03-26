@@ -1,4 +1,4 @@
-function V = localizedMedFilter(I, violMask, sz)
+function V = localizedMedFilter(Im, violMask, sz)
 %   This is a function that takes in 3D DTI and DKI maps, along with their
 %   directional violation maps and applied a median filter. This function
 %   differs from the traditional 3D filter in MATLAB in that it is
@@ -19,60 +19,57 @@ function V = localizedMedFilter(I, violMask, sz)
 %   Created with MATLAB 2018b
 
 
-[Ix Iy Iz] = size(I);
+[Ix Iy Iz] = size(Im);
 [Mx My Mz] = size(violMask);
-I = double(I);
-V = I;
+Im = double(Im);
+V = Im;
 
 %% Perform Checks
-if prod(size(I)) ~= prod(size(violMask))
+if prod(size(Im)) ~= prod(size(violMask))
     error('Violation mask and parameter map sizes are not equal');
 else
-filterObject = zeros(sz,sz,sz);
+    filterObject = zeros(sz,sz,sz);
 end
 
 %% Create Filter
-centralIdx = median(1:sz);
-
-% Index of center of square matrix circulating around the perimeter of
-% image
-iterX = centralIdx:(Ix - (centralIdx-1));
-iterY = centralIdx:(Iy - (centralIdx-1));
-iterZ = centralIdx:(Iz - (centralIdx-1));
-
-% Nesting 'for' loops here allow a "scanning" like mechanism where the
-% region of size sz-by-sz scans from one edge of x-axis to the other, then
-% shifts up by one voxel on the y-axis and scans along the x-axis again.
-% AFter scanning the entire xy-plane, it moves one voxel up the z-plane and
-% rescans the xy-plane. It does this until the entire image is scanned.
+% Distance from centroid to edges of 3D box filter
 d2move = abs(sz - centralIdx);
-for z2 = iterZ
-    z1 = z2 - d2move;
-    z3 = z2 + d2move;
+
+violIdx = find(violMask);
+for i = 1:length(violIdx)
     
-    for y2 = iterY
-        y1 = y2 - d2move;
-        y3 = y2 + d2move;
+    [I, J, K] = ind2sub([Ix,Iy,Iz],violIdx(i));
+    
+    % Index beginning and end of median filter matrix
+    Ib = I - d2move;
+    Ie = I + d2move;
+    
+    Jb = J - d2move;
+    Je = J + d2move;
+    
+    Kb = K - d2move;
+    Ke = K + d2move;
+    
+    % Get reference image and violation mask patches
+    try
+        patchViol = violMask(Ib:Ie, Jb:Je, Kb:Ke);
+        patchI = Im(Ib:Ie, Jb:Je, Kb:Ke);
+        nViol = numel(find(patchViol));
         
-        for x2 = iterX
-            x1 = x2 - d2move;
-            x3 = x2 + d2move;
-            
-            %% Determine Median Values
-            
-            % Read all map values within this filter
-            tmp = I(x1:x3,y1:y3,z1:z3);
-            
-            % NaN the central value to prevent it from being part of the
-            % filter
-            tmp(centralIdx,centralIdx,centralIdx) = NaN;
-            
-            if violMask(x2,y2,z2) == 1
-                V(x2,y2,z2) = nanmedian(tmp,'all');
-            else
-                % do nothing
-            end
+        % Here a check is performed to compute the number of violations in a
+        % patch. If all voxels are violations, do nothing. Otherwise, exclude
+        % violation voxels from the median calculation
+        if nViol == sz^3;
+            % If every voxel in patch is a violation, replace nothing
+            patchV = patchI;
+        else
+            % Else exclude all violation voxels from median
+            V(I,J,K) = nanmedian(patchI(find(patchViol == 0)),'all');
         end
+        
+    catch
+        disp(sprintf('Violation at [%d,%d,%d] occurs at image edge...skipping',...
+            I,J,K));
     end
 end
 end
