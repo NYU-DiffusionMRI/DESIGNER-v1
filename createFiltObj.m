@@ -53,7 +53,7 @@ Im = double(Im);
 if prod(size(Im)) ~= prod(size(violMask))
     error('Violation mask and parameter map sizes are not equal');
 else
-    filterObject = zeros(sz,sz,sz);
+    disp('...applying median filter');
 end
 
 %% Create Filter
