@@ -139,7 +139,7 @@ for i = 1:length(violIdx);
                 end
                 
             else   % If odd
-                medianIdx = (nVal + 1) / 2;
+                medianIdx = (nVals + 1) / 2;
             end
             
             filtObject.OriginalVal(i) = Im(I,J,K);
