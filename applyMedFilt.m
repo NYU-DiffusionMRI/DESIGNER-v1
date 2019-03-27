@@ -48,7 +48,7 @@ for i = 1:length(filtObject.PatchIdx)
     % If PatchIdx is an integer, perform voxel replacement. Otherwise do
     % nothing and jump to next violation.
     
-    if ~isnan(filtObject.PatchIdx)
+    if ~isnan(filtObject.PatchIdx(i))
         [I, J, K] = ind2sub([Ix,Iy,Iz],violIdx(i));
         
         % Index beginning and ending of median filter (box) matrix
@@ -61,7 +61,7 @@ for i = 1:length(filtObject.PatchIdx)
         Kb = K - d2move;
         Ke = K + d2move;
         
-        patchViol = violMask(Ib:Ie, Jb:Je, Kb:Ke);
+        patchViol = filtObject.Mask(Ib:Ie, Jb:Je, Kb:Ke);
         patchI = Im(Ib:Ie, Jb:Je, Kb:Ke);
         
         V(I,J,K) = patchI(filtObject.PatchIdx(i));
