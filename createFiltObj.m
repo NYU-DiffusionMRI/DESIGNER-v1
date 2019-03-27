@@ -9,7 +9,7 @@ function filtObject = createFiltObj(Im, violMask, sz)
 %   function.
 %   -----------------------------------------------------------------------
 %   Inputs:
-%       I        --> 3D parameter map or any 3D image
+%       Im       --> 3D parameter map or any 3D image
 %
 %       violMask --> Binary mask containing locations of directional
 %                    violations or anywhere a median filter is to be
@@ -31,19 +31,24 @@ function filtObject = createFiltObj(Im, violMask, sz)
 %           - total number of violated voxels that were corrected and 'sz'
 %           number of pixels away from the image edge
 %
-%       filtObject.PatchValue
-%           - median value of violated voxel patch
+%       filtObject.OriginalVal
+%           - original value of violated voxel in patch
 %
-%       filtObject.MedianIndex
-%           - index of filtObject.PatchValue in a patch sorted ina scending
+%       filtObject.PatchVal
+%           - median value of violated voxel in patch
+%
+%       filtObject.MedianIdx
+%           - index of filtObject.PatchVal in a patch sorted in acending
 %           order
+%
+%       filtObject.PatchIdx
+%           - index of voxel to use for violation replacement in a patch
 %   -----------------------------------------------------------------------
 %   Author: Siddhartha Dhiman
 %   Email:  dhiman@musc.edu
 %   Date:   03/22/2019
 %   Created with MATLAB 2018b
 %   =======================================================================
-
 
 [Ix Iy Iz] = size(Im);
 [Mx My Mz] = size(violMask);
@@ -52,8 +57,11 @@ Im = double(Im);
 %% Perform Checks
 if prod(size(Im)) ~= prod(size(violMask))
     error('Violation mask and parameter map sizes are not equal');
+    % Ensure filter box matrix is odd-sized
+elseif mod(sz,2) == 0
+    error('Filter matrix size needs to be an odd-numnber');
 else
-    disp('...applying median filter');
+    disp('...applying median filter (1/2)');
 end
 
 %% Create Filter
@@ -94,7 +102,8 @@ for i = 1:length(violIdx);
         % violation voxels from the median calculation
         if nViol == sz^3;
             % If every voxel in patch is a violation, replace nothing
-            patchV = patchI;
+            filtObject.PatchIdx(i) = NaN;
+            continue;
         else
             % Sort all patch values into ascending order
             patchVals = sort(patchI(find(patchViol == 0)),'ascend');
@@ -104,42 +113,57 @@ for i = 1:length(violIdx);
             if mod(nVals,2) == 0    % If even
                 % Find the middle two numbers and average them, find the
                 % index of patch value closest to mean
-                medianIdx = [nVals/2, nVals/2 + 1];
-                medMean = mean([patchVals(medianIdx(1)),...
-                    patchVals(medianIdx(2))]);
+                medianIdxTmp = [nVals/2, nVals/2 + 1];
+                medMeanTmp = mean([patchVals(medianIdxTmp(1)),...
+                    patchVals(medianIdxTmp(2))]);
                 
                 % Then check if mean is same as patch values from the two
                 % central median indexes. If it is, replace it by either
                 % medianIdx1 or medianIdx2
-                if medMean == patchVals(medianIdx(1)) & medMean == patchVals(medianIdx(2))
-                    filtObject.PatchValue(i) = patchVals(medianIdx);
+                if medMeanTmp == patchVals(medianIdxTmp(1)) & medMeanTmp == patchVals(medianIdxTmp(2))
+                    medianIdx = medianIdxTmp(1);
                     
                     % If not, find the index of voxel closest to mean. That
                     % will be the median.
                 else
-                    medDist = abs([medMean - patchVals(medianIdx(1)),...
-                        medMean - patchVals(medianIdx(2))]);
+                    medDist = abs([medMeanTmp - patchVals(medianIdxTmp(1)),...
+                        medMeanTmp - patchVals(medianIdxTmp(2))]);
                     % If the distance of mean from two central values is
                     % the same, pick the smaller index medianIdx1
                     if medDist(1) == medDist(2)
-                        medianIdx = medianIdx(1);
+                        medianIdx = medianIdxTmp(1);
                     else
                         % Else median index is the one closer to mean
-                        medianIdx = medianIdx(find(medDist == min(medDist)));
+                        medianIdx = medianIdxTmp(find(medDist == min(medDist)));
                     end
-                    filtObject.PatchValue(i) = patchVals(medianIdx);
-                    filtObject.MedianIndex(i) = medianIdx;
                 end
-            else
-                filtObject.PatchValue(i) = patchVals(medianIdx);
-                filtObject.MedianIndex(i) = (nVals + 1)/2;
+                
+            else   % If odd
+                medianIdx = (nVal + 1) / 2;
             end
+            
+            filtObject.OriginalVal(i) = Im(I,J,K);
+            filtObject.CorrectedVal(i) = patchVals(medianIdx);
+            filtObject.MedianIdx(i) = medianIdx;
+            % Locate median value in patch and get index. If multiple
+            % indexes are present, pick the lowest one
+            filtObject.PatchIdx(i) = min(find(...
+                patchI == patchVals(medianIdx)));
         end
     catch
+        % Some violated voxels may be on the edge of the image and the
+        % median filter will fail. This portion will catch such voxels and
+        % label the MedianIdx as NaN to specify no median exists. Because
+        % the voxel is very close to the edge, a median
         disp(sprintf('Violation voxel [%d,%d,%d] occurs at image edge...skipping',...
             I,J,K));
-        filtObject.MedianIndex(i) = NaN;
+        filtObject.CorrectedVal(i) = NaN;
+        filtObject.MedianIdx(i) = NaN;
+        filtObject.PatchIdx(i) = NaN;
     end
+    filtObject.X(i) = I;
+    filtObject.Y(i) = J;
+    filtObject.Z(i) = K;
 end
-filtObject.CorrectedVoxels = numel(find(~isnan(filtObject.MedianIndex)));
+filtObject.CorrectedVoxels = numel(find(~isnan(filtObject.MedianIdx)));
 end

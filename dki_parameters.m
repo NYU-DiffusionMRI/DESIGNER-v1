@@ -1,64 +1,64 @@
 
 function [fa, md, rd, ad, fe, mk, rk, ak, kfa, mkt] = dki_parameters(dt, mask, violMask)
-    % diffusion and kurtosis tensor parameter calculation
-    %
-    % -----------------------------------------------------------------------------------
-    % please cite: Veraart et al.  
-    %              More Accurate Estimation of Diffusion Tensor Parameters Using Diffusion Kurtosis Imaging,
-    %              MRM 65 (2011): 138-145.
-    %------------------------------------------------------------------------------------
-    % 
-    % Usage:
-    % ------
-    % [fa, md, ad, rd, fe, mk, ak, rk] = dki_parameters(dt [, mask [, branch]])
-    %
-    % Required input: 
-    % ---------------
-    %     1. dt: diffusion kurtosis tensor (cf. order of tensor elements cf. dki_fit.m)
-    %           [x, y, z, 21]
-    %
-    % Optional input:
-    % ---------------
-    %    2. mask (boolean; [x, y, x]), providing a mask limits the
-    %       calculation to a user-defined region-of-interest.
-    %       default: mask = full FOV
-    %
-    %    3. branch selection, 1 or 2 (default: 1)
-    %              1. De_parallel > Da_parallel
-    %              2. Da_parallel > De_parallel
-    % 
-    % output:
-    % -------
-    %  1. fa:                fractional anisitropy
-    %  2. md:                mean diffusivity
-    %  3. rd:                radial diffusivity
-    %  4. ad:                axial diffusivity
-    %  5. fe:                principal direction of diffusivity
-    %  6. mk:                mean kurtosis
-    %  7. rk:                radial kurtosis
-    %  8. ak:                axial kurtosis
-    %  9. kfa:               kurtosis fractional anisotropy
-    %  10. mkt:              mean kurtosis tensor
-    %
-    % Important: The presence of outliers "black voxels" in the kurtosis maps 
-    %            are we well-known, but inherent problem to DKI. Smoothing the 
-    %            data in addition to the typical data preprocessing steps
-    %            might minimize the impact of those voxels on the visual
-    %            and statistical interpretation. However, smoothing comes
-    %            with the cost of partial voluming. 
-    %       
-    % Copyright (c) 2017 New York University and University of Antwerp
-    % 
-    % This Source Code Form is subject to the terms of the Mozilla Public
-    % License, v. 2.0. If a copy of the MPL was not distributed with this file,
-    % You can obtain one at http://mozilla.org/MPL/2.0/
-    % 
-    % This code is distributed  WITHOUT ANY WARRANTY; without even the 
-    % implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-    % 
-    % For more details, contact: Jelle.Veraart@nyumc.org 
-    
-    
+% diffusion and kurtosis tensor parameter calculation
+%
+% -----------------------------------------------------------------------------------
+% please cite: Veraart et al.
+%              More Accurate Estimation of Diffusion Tensor Parameters Using Diffusion Kurtosis Imaging,
+%              MRM 65 (2011): 138-145.
+%------------------------------------------------------------------------------------
+%
+% Usage:
+% ------
+% [fa, md, ad, rd, fe, mk, ak, rk] = dki_parameters(dt [, mask [, branch]])
+%
+% Required input:
+% ---------------
+%     1. dt: diffusion kurtosis tensor (cf. order of tensor elements cf. dki_fit.m)
+%           [x, y, z, 21]
+%
+% Optional input:
+% ---------------
+%    2. mask (boolean; [x, y, x]), providing a mask limits the
+%       calculation to a user-defined region-of-interest.
+%       default: mask = full FOV
+%
+%    3. branch selection, 1 or 2 (default: 1)
+%              1. De_parallel > Da_parallel
+%              2. Da_parallel > De_parallel
+%
+% output:
+% -------
+%  1. fa:                fractional anisitropy
+%  2. md:                mean diffusivity
+%  3. rd:                radial diffusivity
+%  4. ad:                axial diffusivity
+%  5. fe:                principal direction of diffusivity
+%  6. mk:                mean kurtosis
+%  7. rk:                radial kurtosis
+%  8. ak:                axial kurtosis
+%  9. kfa:               kurtosis fractional anisotropy
+%  10. mkt:              mean kurtosis tensor
+%
+% Important: The presence of outliers "black voxels" in the kurtosis maps
+%            are we well-known, but inherent problem to DKI. Smoothing the
+%            data in addition to the typical data preprocessing steps
+%            might minimize the impact of those voxels on the visual
+%            and statistical interpretation. However, smoothing comes
+%            with the cost of partial voluming.
+%
+% Copyright (c) 2017 New York University and University of Antwerp
+%
+% This Source Code Form is subject to the terms of the Mozilla Public
+% License, v. 2.0. If a copy of the MPL was not distributed with this file,
+% You can obtain one at http://mozilla.org/MPL/2.0/
+%
+% This code is distributed  WITHOUT ANY WARRANTY; without even the
+% implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+%
+% For more details, contact: Jelle.Veraart@nyumc.org
+
+
 n = size(dt, 4);
 if ndims(dt)~=4
     error('size of dt needs to be [x, y, z, 21]')
@@ -66,10 +66,10 @@ end
 if n~=21
     error('dt needs to contain 21')
 end
-if ~exist('mask','var') || isempty(mask)     
-        mask = ~isnan(dt(:,:,:,1));
+if ~exist('mask','var') || isempty(mask)
+    mask = ~isnan(dt(:,:,:,1));
 end
-    
+
 dt = vectorize(dt, mask);
 nvoxels = size(dt, 2);
 
@@ -91,7 +91,7 @@ for i = 1:nvoxels
     l2(i) = eigval(2,:);
     l3(i) = eigval(3,:);
     
-    e1(:, i) = eigvec(:, 1); 
+    e1(:, i) = eigvec(:, 1);
 end
 md = (l1+l2+l3)/3;
 
@@ -117,18 +117,33 @@ parfor i = 1:nvoxels
     [kfa(i),mkt(i)] = ComputeKFA(dt(:,i),3,0)   % [0 3] define the range of
     %   kurtosis to use in the calculation of KFA
 end
-               
+
 %% return maps
-fa  = localizedMedFilter(vectorize(fa, mask),violMask,3);
-md  = localizedMedFilter(vectorize(md, mask),violMask,3);
-ad  = localizedMedFilter(vectorize(ad, mask),violMask,3);
-rd  = localizedMedFilter(vectorize(rd, mask),violMask,3);
-mk  = localizedMedFilter(vectorize(mk, mask),violMask,3);
-ak  = localizedMedFilter(vectorize(ak, mask),violMask,3);
-rk  = localizedMedFilter(vectorize(rk, mask),violMask,3);
+fa  = vectorize(fa, mask);
+md  = vectorize(md, mask);
+ad  = vectorize(ad, mask);
+rd  = vectorize(rd, mask);
+mk  = vectorize(mk, mask);
+ak  = vectorize(ak, mask);
+rk  = vectorize(rk, mask);
 fe  = vectorize(e1, mask);
-kfa = localizedMedFilter(vectorize(kfa, mask),violMask,3);
-mkt = localizedMedFilter(vectorize(mkt, mask),violMask,3);
+kfa = vectorize(kfa, mask);
+mkt = vectorize(mkt, mask);
+
+%% Median filter maps
+% First create median filtering object based on MK
+medianFilter = createFiltObj(mk, violMask, 3);
+
+% Then apply filter to all maps
+fa = applyMedFilt(fa, medianFilter);
+md = applyMedFilt(md, medianFilter);
+ad = applyMedFilt(ad, medianFilter);
+rd = applyMedFilt(rd, medianFilter);
+mk = applyMedFilt(mk, medianFilter);
+ad = applyMedFilt(ad, medianFilter);
+rk = applyMedFilt(rk, medianFilter);
+kfa = applyMedFilt(kfa, medianFilter);
+mkt = applyMedFilt(mkt, medianFilter);
 end
 
 function dirs = get256dirs()
@@ -399,7 +414,7 @@ md = sum(dt([1 4 6],:),1)/3;
 
 ndir  = size(dir, 1);
 T =  W_cnt(ones(ndir, 1), :).*dir(:,W_ind(:, 1)).*dir(:,W_ind(:, 2)).*dir(:,W_ind(:, 3)).*dir(:,W_ind(:, 4));
- 
+
 akc =  T*dt(7:21, :);
 akc = (akc .* repmat(md.^2, [size(adc, 1), 1]))./(adc.^2);
 end
@@ -412,42 +427,42 @@ adc = T * dt;
 end
 
 function [X, cnt] = createTensorOrder(order)
-    
+
 %     X = nchoosek(kron([1, 2, 3], ones(1, order)), order);
 %     X = unique(X, 'rows');
 %     for i = 1:size(X, 1)
 %         cnt(i) = factorial(order) / factorial(nnz(X(i, :) ==1))/ factorial(nnz(X(i, :) ==2))/ factorial(nnz(X(i, :) ==3));
 %     end
 
-    if order == 2
-        X = [1 1; ...
-             1 2; ...
-             1 3; ...
-             2 2; ...
-             2 3; ...
-             3 3];
-        cnt = [1 2 2 1 2 1]; 
-    end
-    
-    if order == 4
-        X = [1 1 1 1; ...
-             1 1 1 2; ...
-             1 1 1 3; ...
-             1 1 2 2; ...
-             1 1 2 3; ...
-             1 1 3 3; ...
-             1 2 2 2; ...
-             1 2 2 3; ...
-             1 2 3 3; ... 
-             1 3 3 3; ...
-             2 2 2 2; ...
-             2 2 2 3; ...
-             2 2 3 3; ...
-             2 3 3 3; ...
-             3 3 3 3];
-        cnt = [1 4 4 6 12 6 4 12 12 4 1 4 6 4 1]; 
-    end
-    
+if order == 2
+    X = [1 1; ...
+        1 2; ...
+        1 3; ...
+        2 2; ...
+        2 3; ...
+        3 3];
+    cnt = [1 2 2 1 2 1];
+end
+
+if order == 4
+    X = [1 1 1 1; ...
+        1 1 1 2; ...
+        1 1 1 3; ...
+        1 1 2 2; ...
+        1 1 2 3; ...
+        1 1 3 3; ...
+        1 2 2 2; ...
+        1 2 2 3; ...
+        1 2 3 3; ...
+        1 3 3 3; ...
+        2 2 2 2; ...
+        2 2 2 3; ...
+        2 2 3 3; ...
+        2 3 3 3; ...
+        3 3 3 3];
+    cnt = [1 4 4 6 12 6 4 12 12 4 1 4 6 4 1];
+end
+
 end
 
 function dirs = radialsampling(dir, n)
@@ -471,22 +486,22 @@ end
 
 function [s, mask] = vectorize(S, mask)
 if nargin == 1
-   mask = ~isnan(S(:,:,:,1));
+    mask = ~isnan(S(:,:,:,1));
 end
 if ismatrix(S)
-n = size(S, 1);
-[x, y, z] = size(mask);
-s = NaN([x, y, z, n], 'like', S);
-for i = 1:n
-    tmp = NaN(x, y, z, 'like', S);
-    tmp(mask(:)) = S(i, :);
-    s(:,:,:,i) = tmp;
-end
+    n = size(S, 1);
+    [x, y, z] = size(mask);
+    s = NaN([x, y, z, n], 'like', S);
+    for i = 1:n
+        tmp = NaN(x, y, z, 'like', S);
+        tmp(mask(:)) = S(i, :);
+        s(:,:,:,i) = tmp;
+    end
 else
-for i = 1:size(S, 4)
-   Si = S(:,:,:,i);
-   s(i, :) = Si(mask(:));
-end
+    for i = 1:size(S, 4)
+        Si = S(:,:,:,i);
+        s(i, :) = Si(mask(:));
+    end
 end
 end
 
@@ -494,7 +509,7 @@ function [kfa,mkt] = ComputeKFA(dt,Kmax_final,Kmin_final)
 %
 % computes the kfa given a 15-vector of kurtosis tensor values
 %
-% Author: Mark Van Horn, Emilie McKinnon, and Siddhartha Dhiman 
+% Author: Mark Van Horn, Emilie McKinnon, and Siddhartha Dhiman
 % Last modified: 01/03/19
 
 offset = 6; %   Number of DT elements prior to KT elements in dt
