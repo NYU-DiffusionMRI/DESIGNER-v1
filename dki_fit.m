@@ -190,13 +190,18 @@ if any(viol)
     % A legal violation is one where there are more than 50% directional
     % violations and at least 15 directional violations
     parfor i = 1:length(sumViol)
+        
         violProp = (sumViol(i) / imgDirs) > 0.50;
+        goodDirs = imgDirs - sumViol(i) > 15;
         if violProp
             violMask(i) = 1;
-        elseif imgDirs - sumViol(i) > 15    % at least 15 good directions
+        else
+            violMask(i) = 0;
+        end
+        if goodDirs
             violMask(i) = 0;
         else
-            violMask(i) = 1;
+            ;
         end
     end
 else
