@@ -133,13 +133,11 @@ if any(constraints)
     d = zeros([1, size(C, 1)]);
     options = optimset('Display', 'off', 'Algorithm', 'interior-point', 'MaxIter', 22000, 'TolCon', 1e-12, 'TolFun', 1e-12, 'TolX', 1e-12, 'MaxFunEvals', 220000);
     output = struct();
-    viol = zeros(1,nvoxels);
     parfor i = 1:nvoxels
         try
             in_ = outliers(:, i) == 0;
             wi = w(:,i); Wi = diag(wi(in_));
             [dt(:, i),~,~,~,output,~] = lsqlin(Wi*b(in_, :),Wi*log(dwi(in_,i)),-C, d, [],[],[],[],[],options);
-            viol(i) = output.constrviolation;
         catch
             dt(:, i) = 0;
         end
@@ -173,43 +171,74 @@ akc = akc(find(bval == largestBval),:);
 %   total violations per voxel is sum of direction violations in C1, C2 and
 %   C3.
 
-if any(viol)
-    dirViol = zeros(3,nvoxels);
-    violIdx = find(viol);
+sumViol = zeros(3,nvoxels);
+for i = 1:nvoxels
     
-    for i = 1:length(violIdx)
-        %   For constraint(1)
-        dirViol(1,violIdx(i)) = numel(find(adc(:,violIdx(i)) < 0));
-        %   For constraint(2)
-        dirViol(2,violIdx(i)) = numel(find(akc(:,violIdx(i)) < 0));
-        %   For constraint(3)
-        dirViol(3,violIdx(i)) = numel(find(akc(:,violIdx(i)) > ...
-            (3 / largestBval * akc(:,violIdx(i)))));
-    end
-    sumViol = sum(dirViol,1);
-    % A legal violation is one where there are more than 50% directional
-    % violations and at least 15 directional violations
-    parfor i = 1:length(sumViol)
+    % For constraint 1
+    viol.Dmin = find(adc(:,i) < 0);
+    
+    % For constraint 2
+    viol.Kmin = find(akc(:,i) < 0);
+    
+    % For constraint 3
+    viol.DKrs = find(akc(:,i) > (3 / largestBval * adc(:,i)));
+    
+    if constraints(1) == 1 & constraints(2) == 0 & constraints(3) == 0
+        % [1 0 0]
+        sumViol(i) = numel(unique(viol.Dmin));
         
-        violProp = (sumViol(i) / imgDirs) > 0.50;
-        goodDirs = imgDirs - sumViol(i) > 15;
-        if violProp
-            violMask(i) = 1;
-        else
-            violMask(i) = 0;
-        end
-        if goodDirs
-            violMask(i) = 0;
-        else
-            ;
-        end
+    elseif constraints(1) == 0 & constraints(2) == 1 & constraints(3) == 0
+        % [0 1 0]
+        sumViol(i) = numel(unique(viol.Kmin));
+        
+    elseif constraints(1) == 0 & constraints(2) == 0 & constraints(3) == 1
+        % [0 0 1]
+        sumViol(i) = numel(unique(viol.DKrs));
+        
+    elseif constraints(1) == 1 & constraints(2) == 1 & constraints(3) == 0
+        % [1 1 0]
+        sumViol(i) = numel(unique(cat(1,viol.Dmin,viol.Kmin)));
+        
+    elseif constraints(1) == 1 & constraints(2) == 0 & constraints(3) == 1
+        % [1 0 1]
+        sumViol(i) = numel(unique(cat(1,viol.Dmin,viol.DKrs)));
+        
+    elseif constraints(1) == 0 & constraints(2) == 1 & constraints(3) == 1
+        % [0 1 1]
+        sumViol(i) = numel(unique(cat(1,viol.Kmin,viol.DKrs)));
+        
+    elseif constraints(1) == 1 & constraints(2) == 1 & constraints(3) == 1
+        % [1 1 1]
+        sumViol(i) = numel(unique(cat(1,viol.Dmin,viol.Kmin,viol.DKrs)));
     end
-else
-    ;
 end
 
-%   Reshape violation logical vector into a logical mask. Locations where a
-%   voxel = 1 is where a violation occured.
+%     if exist(viol.Dmin)
+%     % Count unique indexes of all violations
+%     sumViol(i) = numel(unique(cat(1,viol.Dmin,viol.Kmin,viol.DKrs)));
+%     end
+
+
+% A legal violation is one where there are more than 50% directional
+% violations and at least 15 directional violations. We first check for
+% proportions of violation where any voxels that has over 50% violations is
+% marked for replacement. Then we check for at voxels with less than 15
+% good directions, where the voxel meeting this criteria is marked for
+% replacement.
+
+parfor i = 1:length(sumViol)
+    violProp = (sumViol(i) / imgDirs) > 0.50;
+    goodDirs = imgDirs - sumViol(i) > 15;
+    if violProp | ~goodDirs
+        violMask(i) = 1;
+    else
+       violMask(i) = 0;
+    end
+end
+
+% Reshape violation logical vector into a logical mask. Locations where a
+% voxel = 1 is where a violation occured.
+
 violMask = vectorize(violMask, mask);
 violMask(isnan(violMask)) = 0;
 violMask = logical(violMask);
