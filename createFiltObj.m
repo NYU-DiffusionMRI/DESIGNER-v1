@@ -105,8 +105,9 @@ for i = 1:length(violIdx);
             filtObject.PatchIdx(i) = NaN;
             continue;
         else
-            % Sort all patch values into ascending order
+            % Sort all patch values into ascending order and remove NaNs
             patchVals = sort(patchI(find(patchViol == 0)),'ascend');
+            patchVals = patchVals(~isnan(patchVals));
             nVals = numel(patchVals);
             
             % Different median algorithms based on whether odd or even
@@ -128,6 +129,7 @@ for i = 1:length(violIdx);
                 else
                     medDist = abs([medMeanTmp - patchVals(medianIdxTmp(1)),...
                         medMeanTmp - patchVals(medianIdxTmp(2))]);
+                    medDist = single(medDist);
                     % If the distance of mean from two central values is
                     % the same, pick the smaller index medianIdx1
                     if medDist(1) == medDist(2)
