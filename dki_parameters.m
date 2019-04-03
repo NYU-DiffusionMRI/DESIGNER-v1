@@ -135,6 +135,7 @@ mkt = vectorize(mkt, mask);
 medianFilter = createFiltObj(mk, violMask, 3);
 
 % Then apply filter to all maps
+if numel(find(violMask)) > 0
 fa = applyMedFilt(fa, medianFilter);
 md = applyMedFilt(md, medianFilter);
 ad = applyMedFilt(ad, medianFilter);
@@ -144,6 +145,9 @@ ad = applyMedFilt(ad, medianFilter);
 rk = applyMedFilt(rk, medianFilter);
 kfa = applyMedFilt(kfa, medianFilter);
 mkt = applyMedFilt(mkt, medianFilter);
+else
+    ;
+end
 end
 
 function dirs = get256dirs()

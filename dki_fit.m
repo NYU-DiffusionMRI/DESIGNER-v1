@@ -171,7 +171,7 @@ akc = akc(find(bval == largestBval),:);
 %   total violations per voxel is sum of direction violations in C1, C2 and
 %   C3.
 
-sumViol = zeros(3,nvoxels);
+sumViol = zeros(1,nvoxels);
 for i = 1:nvoxels
     
     % For constraint 1
@@ -185,15 +185,15 @@ for i = 1:nvoxels
     
     if constraints(1) == 1 & constraints(2) == 0 & constraints(3) == 0
         % [1 0 0]
-        sumViol(i) = numel(unique(viol.Dmin));
+        sumViol(i) = numel(viol.Dmin);
         
     elseif constraints(1) == 0 & constraints(2) == 1 & constraints(3) == 0
         % [0 1 0]
-        sumViol(i) = numel(unique(viol.Kmin));
+        sumViol(i) = numel(viol.Kmin);
         
     elseif constraints(1) == 0 & constraints(2) == 0 & constraints(3) == 1
         % [0 0 1]
-        sumViol(i) = numel(unique(viol.DKrs));
+        sumViol(i) = numel(viol.DKrs);
         
     elseif constraints(1) == 1 & constraints(2) == 1 & constraints(3) == 0
         % [1 1 0]
@@ -227,7 +227,7 @@ end
 % replacement.
 
 parfor i = 1:length(sumViol)
-    violProp = (sumViol(i) / imgDirs) > 0.50;
+    violProp = (sumViol(i) / imgDirs) > 0;
     goodDirs = imgDirs - sumViol(i) > 15;
     if violProp | ~goodDirs
         violMask(i) = 1;
