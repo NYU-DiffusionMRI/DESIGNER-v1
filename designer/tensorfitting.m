@@ -351,6 +351,6 @@ if ~exist(fullfile(outdir,'QC'))
 else
     ;
 end
-nii.img = violMask; nii.hdr.dime.glmax = max(b0(:)); save_untouch_nii(nii,fullfile(outdir,'QC','violation_mask.nii'));
+nii.img = violMask; nii.hdr.dime.glmax = max(b0(:)); save_untouch_nii(nii,fullfile(outdir,'QC','violation_map.nii'));
 end
 
