@@ -226,22 +226,28 @@ end
 % good directions, where the voxel meeting this criteria is marked for
 % replacement.
 
+% Instead of marking logical locations of violations, create a mask that
+% shows percentage violations instead
 parfor i = 1:length(sumViol)
-    violProp = (sumViol(i) / imgDirs) > 0;
-    goodDirs = imgDirs - sumViol(i) > 15;
-    if violProp | ~goodDirs
-        violMask(i) = 1;
-    else
-       violMask(i) = 0;
-    end
+    violMask(i) = sumViol(i) / imgDirs;
 end
+
+% parfor i = 1:length(sumViol)
+%     violProp = (sumViol(i) / imgDirs) > 0;
+%     goodDirs = imgDirs - sumViol(i) > 15;
+%     if violProp | ~goodDirs
+%         violMask(i) = 1;
+%     else
+%        violMask(i) = 0;
+%     end
+% end
 
 % Reshape violation logical vector into a logical mask. Locations where a
 % voxel = 1 is where a violation occured.
 
 violMask = vectorize(violMask, mask);
 violMask(isnan(violMask)) = 0;
-violMask = logical(violMask);
+% violMask = logical(violMask);
 disp(sprintf('...found %d constraint violations',nnz(violMask)));
 dt = vectorize(dt, mask);
 end

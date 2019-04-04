@@ -1,4 +1,4 @@
-function filtObject = createFiltObj(Im, violMask, sz)
+function filtObject = createFiltObj(Im, violMask, th, sz)
 %   =======================================================================
 %   This function creates a 3D median filter object that specifies the
 %   size of the filter, the violation mask, and the index of a median from
@@ -14,6 +14,8 @@ function filtObject = createFiltObj(Im, violMask, sz)
 %       violMask --> Binary mask containing locations of directional
 %                    violations or anywhere a median filter is to be
 %                    applied.
+%
+%       th       --> Percentage threshold for median filtering
 %
 %       sz       --> Size of 3D localized median filter sz x sz x sz
 %   -----------------------------------------------------------------------
@@ -68,6 +70,7 @@ end
 % Distance from centroid to edges of 3D box filter
 filtObject.Size = sz;
 filtObject.Mask = violMask;
+filtObject.Mask = imbinarize(filtObject.Mask,th);
 
 centralIdx = median(1:sz);
 d2move = abs(sz - centralIdx);
