@@ -171,4 +171,5 @@ for i = 1:length(violIdx);
     filtObject.Z(i) = K;
 end
 filtObject.CorrectedVoxels = numel(find(~isnan(filtObject.MedianIdx)));
+disp(sprintf('...filter object created with %d%% threshold',th*100));
 end

@@ -132,7 +132,7 @@ mkt = vectorize(mkt, mask);
 
 %% Median filter maps
 % First create median filtering object based on MK
-medianFilter = createFiltObj(mk, violMask, 0, 3);
+medianFilter = createFiltObj(mk, violMask, 0.5, 3);
 
 % Then apply filter to all maps
 if numel(find(violMask)) > 0
