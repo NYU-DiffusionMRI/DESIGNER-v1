@@ -1,4 +1,4 @@
-function tensorfitting(root,outdir,detectoutliers,cumulants,dti,dki,wmti,fitconstraints,akc,DKIroot)
+function tensorfitting(root,outdir,detectoutliers,cumulants,dti,dki,wmti,fitconstraints,medianfilter,akc,DKIroot)
 
 addpath(genpath(DKIroot));
 
@@ -19,6 +19,7 @@ bvec = textread(fullfile(root,bvecdir)); bvec = bvec(:, 1:ndwis)';
 maxbval = max(bval);
 
 detectoutliers = logical(detectoutliers);
+medianfilter = logical(medianfilter);
 dti = logical(dti);
 dki = logical(dki);
 wmti = logical(wmti);
@@ -41,11 +42,11 @@ if detectoutliers
     nii.hdr.dime.dim(5) = ndwis;
     nii.hdr.dime.pixdim(5) = pixdim5;
     nii.img = outliers;  save_untouch_nii(nii,fullfile(root,'irwlls_out.nii'));
-    disp(['... fitting with constraints ',num2str(constraints)])
-    [b0,dt] = dki_fit(dwi,[bvec,bval],mask,constraints,outliers,maxbval);
+    disp(['...fitting with constraints ',num2str(constraints)])
+    [b0,dt,violMask] = dki_fit(dwi,[bvec,bval],mask,constraints,outliers,maxbval);
 else
-    disp(['... fitting with constraints ',num2str(constraints)])
-    [b0,dt] = dki_fit(dwi,[bvec,bval],mask,constraints,[],maxbval);
+    disp(['...fitting with constraints ',num2str(constraints)])
+    [b0,dt,violMask] = dki_fit(dwi,[bvec,bval],mask,constraints,[],maxbval);
 end
 
 if akc
@@ -78,7 +79,7 @@ if cumulants
 end
 
 disp('...getting DTI and DKI params')
-[fa, md, rd, ad, fe, mk, rk, ak, kfa, mkt] = dki_parameters(dt,mask);
+[fa, md, rd, ad, fe, mk, rk, ak, kfa, mkt] = dki_parameters(dt,mask,violMask,medianfilter);
 fe = cat(4,fa.*fe(:,:,:,1),fa.*fe(:,:,:,2),fa.*fe(:,:,:,3));
 
 if dti
@@ -173,10 +174,10 @@ end
         nii.hdr.dime.pixdim(5) = pixdim5;
         nii.img = outliers;  save_untouch_nii(nii,fullfile(root,'irwlls_out.nii'));
         disp(['... fitting with constraints ',num2str(constraints)])
-        [b0,dt] = dki_fit(dwi,[bvec,bval],mask,constraints,outliers,maxbval);
+        [b0,dt,violMask] = dki_fit(dwi,[bvec,bval],mask,constraints,outliers,maxbval);
     else
         disp(['... fitting with constraints ',num2str(constraints)])
-        [b0,dt] = dki_fit(dwi,[bvec,bval],mask,constraints,[],maxbval);
+        [b0,dt,violMask] = dki_fit(dwi,[bvec,bval],mask,constraints,[],maxbval);
     end
 
     if akc
@@ -209,7 +210,7 @@ end
     end
 
     disp('...getting DTI and DKI params')
-    [fa, md, rd, ad, fe, mk, rk, ak] = dki_parameters(dt,mask);
+    [fa, md, rd, ad, fe, mk, rk, ak] = dki_parameters(dt,mask,violMask,medianfilter);
     fe = cat(4,fa.*fe(:,:,:,1),fa.*fe(:,:,:,2),fa.*fe(:,:,:,3));
 
     if dti
@@ -345,5 +346,12 @@ DT = DT_U'; KT = KT_U';
 save(fullfile(outdir,'DT.mat'),'DT');
 save(fullfile(outdir,'KT.mat'),'KT');
 
+%   Save violation mask
+if ~exist(fullfile(outdir,'QC'))
+    mkdir(fullfile(outdir,'QC'));
+else
+    ;
+end
+nii.img = violMask; nii.hdr.dime.glmax = max(b0(:)); save_untouch_nii(nii,fullfile(outdir,'QC','violation_map.nii'));
 end
 

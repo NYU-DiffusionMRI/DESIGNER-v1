@@ -16,12 +16,5 @@ output=$2
 
 # Run designer
 python designer.py \
--denoise -extent 5,5,5 \
--degibbs \
--rician \
--mask \
--prealign \
--smooth 1.25 \
--fit_constraints 1,1,1 \
 -DKIparams -DTIparams \
 ${1} ${2}

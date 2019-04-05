@@ -145,6 +145,9 @@ options.add_argument('-datatype', metavar='<spec>',
                      )
 options.add_argument('-fit_constraints',
                      help='constrain the wlls fit (default 0,1,0)')
+options.add_argument('-median', action='store_true',
+                     help='Specify whether to apply constraint violation based median filter on DTI and DKI parameters'
+                     )
 options.add_argument('-outliers', action='store_true',
                      help='Perform IRWLLS outlier detection')
 options.add_argument('-fslbvec', metavar='<bvecs>',
@@ -288,6 +291,8 @@ else:
     extent = '5,5,5'
 
 call('mrconvert -force dwi.mif working.mif',shell=True)
+print('...Saving raw NIFTI')
+call('mrconvert -force -datatype float32le working.mif dwi_raw.nii',shell=True)
 
 # denoising
 
@@ -526,6 +531,15 @@ if app.args.DTIparams or app.args.DKIparams or app.args.WMTIparams:
     shutil.copyfile(path.toTemp('fullnoisemap.nii', True),
                     path.fromUser(app.args.output + '/fullnoisemap.nii'
                     , True))
+    shutil.copyfile(path.toTemp('dwi_raw.nii', True),
+                    path.fromUser(app.args.output + '/dwi_raw.nii'
+                    , True))
+    shutil.copyfile(path.toTemp('CSFmask.nii', True),
+                    path.fromUser(app.args.output + '/CSFmask.nii'
+                    , True))
+    shutil.copyfile(path.toTemp('brain_mask.nii', True),
+                    path.fromUser(app.args.output + '/brain_mask.nii'
+                    , True))                                                
 
     print('...Beginning tensor estimation')
     os.chdir(designer_root)
@@ -546,6 +560,9 @@ if app.args.DTIparams or app.args.DKIparams or app.args.WMTIparams:
     constraints = 0
     if app.args.fit_constraints:
         constraints = app.args.fit_constraints
+    medianfilter = 0
+    if app.args.median:
+        medianfilter = 1
     AKC = 0
     if app.args.akc:
         AKC = 1
@@ -562,6 +579,7 @@ if app.args.DTIparams or app.args.DKIparams or app.args.WMTIparams:
         DKI,
         WMTI,
         constraints,
+        medianfilter,
         AKC,
         DKI_root,
         nargout=0,
