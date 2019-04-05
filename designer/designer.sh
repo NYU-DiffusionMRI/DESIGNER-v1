@@ -22,6 +22,7 @@ python designer.py \
 -mask \
 -prealign \
 -smooth 1.25 \
--eddy -rpe_header \
+-rpe_header -eddy \
+-fit_constraints 0,1,0 \
 -DKIparams -DTIparams \
 ${1} ${2}
