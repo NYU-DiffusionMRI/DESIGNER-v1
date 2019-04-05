@@ -1,4 +1,4 @@
-function tensorfitting(root,outdir,detectoutliers,cumulants,dti,dki,wmti,fitconstraints,akc,DKIroot)
+function tensorfitting(root,outdir,detectoutliers,cumulants,dti,dki,wmti,fitconstraints,medianfilter,akc,DKIroot)
 
 addpath(genpath(DKIroot));
 
@@ -19,6 +19,7 @@ bvec = textread(fullfile(root,bvecdir)); bvec = bvec(:, 1:ndwis)';
 maxbval = max(bval);
 
 detectoutliers = logical(detectoutliers);
+medianfilter = logical(medianfilter);
 dti = logical(dti);
 dki = logical(dki);
 wmti = logical(wmti);
@@ -78,7 +79,7 @@ if cumulants
 end
 
 disp('...getting DTI and DKI params')
-[fa, md, rd, ad, fe, mk, rk, ak, kfa, mkt] = dki_parameters(dt,mask,violMask);
+[fa, md, rd, ad, fe, mk, rk, ak, kfa, mkt] = dki_parameters(dt,mask,violMask,medianfilter);
 fe = cat(4,fa.*fe(:,:,:,1),fa.*fe(:,:,:,2),fa.*fe(:,:,:,3));
 
 if dti
@@ -209,7 +210,7 @@ end
     end
 
     disp('...getting DTI and DKI params')
-    [fa, md, rd, ad, fe, mk, rk, ak] = dki_parameters(dt,mask,violMask);
+    [fa, md, rd, ad, fe, mk, rk, ak] = dki_parameters(dt,mask,violMask,medianfilter);
     fe = cat(4,fa.*fe(:,:,:,1),fa.*fe(:,:,:,2),fa.*fe(:,:,:,3));
 
     if dti

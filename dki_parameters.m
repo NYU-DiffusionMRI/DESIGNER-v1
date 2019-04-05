@@ -1,5 +1,5 @@
 
-function [fa, md, rd, ad, fe, mk, rk, ak, kfa, mkt] = dki_parameters(dt, mask, violMask)
+function [fa, md, rd, ad, fe, mk, rk, ak, kfa, mkt] = dki_parameters(dt, mask, violMask, medianfilter)
 % diffusion and kurtosis tensor parameter calculation
 %
 % -----------------------------------------------------------------------------------
@@ -132,7 +132,9 @@ mkt = vectorize(mkt, mask);
 
 %% Median filter maps
 % First create median filtering object based on MK
-medianFilter = createFiltObj(mk, violMask, 0.5, 3);
+if medianfilter
+% Specify threshold 0 for maximum aggression
+medianFilter = createFiltObj(mk, violMask, 0, 3);
 
 % Then apply filter to all maps
 if medianFilter.FilterStatus == 1
@@ -147,6 +149,7 @@ kfa = applyMedFilt(kfa, medianFilter);
 mkt = applyMedFilt(mkt, medianFilter);
 else
     ;
+end
 end
 end
 
