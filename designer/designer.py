@@ -143,9 +143,9 @@ options.add_argument('-mask', action='store_true',
 options.add_argument('-datatype', metavar='<spec>',
                      help='If using the "-processing_only" option, you can specify the output datatype. Valid options are float32, float32le, float32be, float64, float64le, float64be, int64, uint64, int64le, uint64le, int64be, uint64be, int32, uint32, int32le, uint32le, int32be, uint32be, int16, uint16, int16le, uint16le, int16be, uint16be, cfloat32, cfloat32le, cfloat32be, cfloat64, cfloat64le, cfloat64be, int8, uint8, bit'
                      )
-options.add_argument('-fit_constraints', action='store_true',
+options.add_argument('-fit_constraints',
                      help='constrain the wlls fit (default 0,1,0)')
-options.add_argument('medianfilter',
+options.add_argument('medianfilter', action='store_true',
                      help='Specify whether to apply constraint violation based median filter on DTI and DKI parameters'
                      )
 options.add_argument('-outliers', action='store_true',
@@ -579,7 +579,7 @@ if app.args.DTIparams or app.args.DKIparams or app.args.WMTIparams:
         DKI,
         WMTI,
         constraints,
-        medianFilter.
+        medianFilter,
         AKC,
         DKI_root,
         nargout=0,
