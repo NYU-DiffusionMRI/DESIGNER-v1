@@ -70,14 +70,17 @@ end
 % Distance from centroid to edges of 3D box filter
 filtObject.Size = sz;
 filtObject.Mask = violMask;
+filtObject.PropMask = violMask;
 filtObject.Mask = imbinarize(filtObject.Mask,th);
+filtObject.Threshold = th;
 
 centralIdx = median(1:sz);
 d2move = abs(sz - centralIdx);
 
-violIdx = find(violMask);
+violIdx = find(filtObject.Mask);
 filtObject.ViolatedVoxels = numel(violIdx);
 filtObject.CorrectedVoxels = 0;
+if numel(violIdx) > 0
 for i = 1:length(violIdx);
     
     [I, J, K] = ind2sub([Ix,Iy,Iz],violIdx(i));
@@ -172,4 +175,8 @@ for i = 1:length(violIdx);
 end
 filtObject.CorrectedVoxels = numel(find(~isnan(filtObject.MedianIdx)));
 disp(sprintf('...filter object created with %d%% threshold',th*100));
+filtObject.FilterStatus = 1;
+else
+    disp('...No violations found exceeding threshold');
+    filtObject.FilterStatus = 0;
 end

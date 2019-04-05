@@ -31,7 +31,7 @@ V = Im;
 % Check for image and violation map size
 if prod(size(Im)) ~= prod(size(filtObject.Mask))
     error('Violation mask and parameter map sizes are not equal');
-% Ensure filter box matrix is odd-sized
+    % Ensure filter box matrix is odd-sized
 elseif mod(filtObject.Size,2) == 0
     error('Filter matrix size needs to be an odd-numnber');
 else
@@ -39,35 +39,39 @@ else
 end
 
 %% Create Filter
-% Distance from centroid to edges of 3D box filter
-centralIdx = median(1:filtObject.Size);
-d2move = abs(filtObject.Size - centralIdx);
-violIdx = find(filtObject.Mask);
-for i = 1:length(filtObject.PatchIdx)
+if filtObject.FilterStatus == 1
+    % Distance from centroid to edges of 3D box filter
+    centralIdx = median(1:filtObject.Size);
+    d2move = abs(filtObject.Size - centralIdx);
+    violIdx = find(filtObject.Mask);
     
-    % If PatchIdx is an integer, perform voxel replacement. Otherwise do
-    % nothing and jump to next violation.
-    
-    if ~isnan(filtObject.PatchIdx(i))
-        [I, J, K] = ind2sub([Ix,Iy,Iz],violIdx(i));
+    for i = 1:length(filtObject.PatchIdx)
         
-        % Index beginning and ending of median filter (box) matrix
-        Ib = I - d2move;
-        Ie = I + d2move;
+        % If PatchIdx is an integer, perform voxel replacement. Otherwise do
+        % nothing and jump to next violation.
         
-        Jb = J - d2move;
-        Je = J + d2move;
-        
-        Kb = K - d2move;
-        Ke = K + d2move;
-        
-        patchViol = filtObject.Mask(Ib:Ie, Jb:Je, Kb:Ke);
-        patchI = Im(Ib:Ie, Jb:Je, Kb:Ke);
-        
-        V(I,J,K) = patchI(filtObject.PatchIdx(i));
-        
-    else
-        continue;
+        if ~isnan(filtObject.PatchIdx(i))
+            [I, J, K] = ind2sub([Ix,Iy,Iz],violIdx(i));
+            
+            % Index beginning and ending of median filter (box) matrix
+            Ib = I - d2move;
+            Ie = I + d2move;
+            
+            Jb = J - d2move;
+            Je = J + d2move;
+            
+            Kb = K - d2move;
+            Ke = K + d2move;
+            
+            patchViol = filtObject.Mask(Ib:Ie, Jb:Je, Kb:Ke);
+            patchI = Im(Ib:Ie, Jb:Je, Kb:Ke);
+            
+            V(I,J,K) = patchI(filtObject.PatchIdx(i));
+            
+        else
+            continue;
+        end
     end
+else
 end
 end
