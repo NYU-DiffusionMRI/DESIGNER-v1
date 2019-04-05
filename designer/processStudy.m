@@ -271,7 +271,7 @@ for i = 1:length(subList)
     %             fullfile(allFiles(j).folder,newName));
     %     end
     
-    %% Create QC Metrics
+    %% Create SNR Plots
     mkdir(fullfile(desOutput,'QC'));
     
     %   Load all files
@@ -314,14 +314,14 @@ for i = 1:length(subList)
     nB0 = find(bIdx(1,:));
     meanIdx = horzcat(repmat(listBval(1),[1 numel(nB0)]),listBval(2:end));
     
-    %   Compute means
+    %   Compute means -----------------------------------------------------
     for j = 1:length(listBval)
         for k = 1:length(meanIdx)
             if k <= length(nB0);
-
+                
                 snrProc(:,:,:,k) = Iproc(:,:,:,nB0(k)) ./ Inoise;
                 snrRaw(:,:,:,k) = Iraw(:,:,:,nB0(k)) ./ Inoise;
-
+                
             elseif meanIdx(k) == listBval(j)
                 snrProc(:,:,:,k) = mean(Iproc(:,:,:,bIdx(j,:)),4)./Inoise;
                 snrRaw(:,:,:,k) = mean(Iraw(:,:,:,bIdx(j,:)),4)./Inoise;
@@ -331,50 +331,55 @@ for i = 1:length(subList)
         end
     end
     
-    %   Create plots
+    %   Histogram counts --------------------------------------------------
     nbins = 1000;
     figure;
+    fig = gcf;
+%     set(fig,'PaperUnits','inches','PaperPosition',[.25 .25 8 10],...
+%         'InvertHardcopy','off','Color','white','Visible','off');
     for j = 1:length(listBval)
         [Nproc Eproc] = histcounts(snrProc(:,:,:,meanIdx == listBval(j)),...
             nbins);
         [Nraw Eraw] = histcounts(snrRaw(:,:,:,meanIdx == listBval(j)),...
             nbins);
-        IQRproc = iqr(snrProc(:,:,:,meanIdx == listBval(j)),'all');
-        IQRraw = iqr(snrRaw(:,:,:,meanIdx == listBval(j)),'all');
+        
         %   Normalize from 0 to 1
         Nproc = (Nproc - min(Nproc)) / (max(Nproc) - min(Nproc));
         Nraw = (Nraw - min(Nraw)) / (max(Nraw) - min(Nraw));
+        
+        %   Compute median value of each bin
         for k = 1:nbins
             Mproc(k) = median([Eproc(k) Eproc(k+1)]);
             Mraw(k) = median([Eraw(k) Eraw(k+1)]);
         end
+        
+        %   Plot graphs ---------------------------------------------------
+        
+        %   Plotting colors
+        c1 = [86,187,131]/255;   % Scatter dots
+        c2 = [78,173,241]/255;   % Fit line
+        c3 = [235,235,235]/255; % Background color
+        
+        
         subplot(1,length(listBval),j)
         hold on;
-        plot(Mproc,Nproc)
-        plot(Mraw,Nraw);
+        plot(Mproc,smooth(Nproc),...
+            'Color',c1,...
+            'LineWidth',2);
+        plot(Mraw,smooth(Nraw),...
+            'Color',c2,...
+            'LineWidth',2);
         hold off;
         xlabel('SNR');
-        ylabel('Normalized Voxel Count');
-        legend('SNR: Designer Output','SNR: Designer Input');
+        ylabel('Scaled Voxel Count');
         title(sprintf('B%d',listBval(j)));
         grid on; box on;
+        %   Set axial colors
+        ax = gca;
+        set(ax,'Color',c3,...
+            'GridColor','white','GridAlpha',1,'MinorGridAlpha',0.15);
     end
-    
-    
-    %----------------------------------------------------------------------
-    %   Testing Phase
-    %----------------------------------------------------------------------
-    snrProc = zeros(size(Iproc,1),size(Iproc,2),size(Iproc,3),length(meanIdx));
-    for j = 1:length(listBval)
-        snrProc(:,:,:,meanIdx == listBval(j)) = Iproc(:,:,:);
-    end
-    
-    
-    
-    
-    
-    
-    
+    print(fullfile(desOutput,'QC','SNR_Plots'),'-dpng','-r600');
 end
 
 %% PARFOR Progress Calculation
