@@ -145,7 +145,7 @@ options.add_argument('-datatype', metavar='<spec>',
                      )
 options.add_argument('-fit_constraints',
                      help='constrain the wlls fit (default 0,1,0)')
-options.add_argument('medianfilter', action='store_true',
+options.add_argument('-median', action='store_true',
                      help='Specify whether to apply constraint violation based median filter on DTI and DKI parameters'
                      )
 options.add_argument('-outliers', action='store_true',
@@ -560,9 +560,9 @@ if app.args.DTIparams or app.args.DKIparams or app.args.WMTIparams:
     constraints = 0
     if app.args.fit_constraints:
         constraints = app.args.fit_constraints
-    medianFilter = 0
-    if app.args.medianfilter:
-        medianFilter = 1
+    medianfilter = 0
+    if app.args.median:
+        medianfilter = 1
     AKC = 0
     if app.args.akc:
         AKC = 1
@@ -579,7 +579,7 @@ if app.args.DTIparams or app.args.DKIparams or app.args.WMTIparams:
         DKI,
         WMTI,
         constraints,
-        medianFilter,
+        medianfilter,
         AKC,
         DKI_root,
         nargout=0,

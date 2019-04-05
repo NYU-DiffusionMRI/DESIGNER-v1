@@ -133,23 +133,23 @@ mkt = vectorize(mkt, mask);
 %% Median filter maps
 % First create median filtering object based on MK
 if medianfilter
-% Specify threshold 0 for maximum aggression
-medianFilter = createFiltObj(mk, violMask, 0, 3);
-
-% Then apply filter to all maps
-if medianFilter.FilterStatus == 1
-fa = applyMedFilt(fa, medianFilter);
-md = applyMedFilt(md, medianFilter);
-ad = applyMedFilt(ad, medianFilter);
-rd = applyMedFilt(rd, medianFilter);
-mk = applyMedFilt(mk, medianFilter);
-ad = applyMedFilt(ad, medianFilter);
-rk = applyMedFilt(rk, medianFilter);
-kfa = applyMedFilt(kfa, medianFilter);
-mkt = applyMedFilt(mkt, medianFilter);
-else
-    ;
-end
+    % Specify threshold 0 for maximum aggression
+    medianFilter = createFiltObj(mk, violMask, 0, 3);
+    
+    % Then apply filter to all maps
+    if medianFilter.FilterStatus == 1
+        fa = applyMedFilt(fa, medianFilter);
+        md = applyMedFilt(md, medianFilter);
+        ad = applyMedFilt(ad, medianFilter);
+        rd = applyMedFilt(rd, medianFilter);
+        mk = applyMedFilt(mk, medianFilter);
+        ad = applyMedFilt(ad, medianFilter);
+        rk = applyMedFilt(rk, medianFilter);
+        kfa = applyMedFilt(kfa, medianFilter);
+        mkt = applyMedFilt(mkt, medianFilter);
+    else
+        disp('...user specified no median filtering');
+    end
 end
 end
 
