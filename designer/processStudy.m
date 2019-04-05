@@ -262,14 +262,14 @@ for i = 1:length(subList)
     [s,t] = system(runDesigner,'-echo');
     
     %%  Rename Outputs
-    allFiles = dir(desOutput);
-    allFiles = allFiles(~startsWith({allFiles.name},'.'));
-    for j = 1:length(allFiles)
-        tmp = strsplit(allFiles(j).name,'.');
-        newName = [tmp{1} '_' subList{i} '.' tmp{2}];
-        movefile(fullfile(allFiles(j).folder,allFiles(j).name),...
-            fullfile(allFiles(j).folder,newName));
-    end
+    %     allFiles = dir(desOutput);
+    %     allFiles = allFiles(~startsWith({allFiles.name},'.'));
+    %     for j = 1:length(allFiles)
+    %         tmp = strsplit(allFiles(j).name,'.');
+    %         newName = [tmp{1} '_' subList{i} '.' tmp{2}];
+    %         movefile(fullfile(allFiles(j).folder,allFiles(j).name),...
+    %             fullfile(allFiles(j).folder,newName));
+    %     end
     
     %% Create QC Metrics
     mkdir(fullfile(desOutput,'QC'));
@@ -279,10 +279,10 @@ for i = 1:length(subList)
     bvalPath = fullfile(bvalPath.folder,bvalPath.name);
     bval = round(single(load(bvalPath)));
     
-%     bvecPath = dir(fullfile(desOutput,'*bvec'));
-%     bvecPath = fullfile(bvecPath.folder,bvecPath.name);
+    %     bvecPath = dir(fullfile(desOutput,'*bvec'));
+    %     bvecPath = fullfile(bvecPath.folder,bvecPath.name);
     
-    procPath = dir(fullfile(desOutput,['dwi_designer_' subList{i} '.nii']));
+    procPath = dir(fullfile(desOutput,'dwi_designer.nii'));
     procPath = fullfile(procPath.folder,procPath.name);
     Iproc = niftiread(procPath);
     
@@ -298,9 +298,9 @@ for i = 1:length(subList)
     brainPath = fullfile(brainPath.folder,brainPath.name);
     brainMask = logical(niftiread(brainPath));
     
-%     csfPath = dir(fullfile(desOutput,'CSFmask*'));
-%     csfPath = fullfile(csfPath.folder,csfPath.name);
-%     csfMask = logical(niftiread(csfPath));
+    %     csfPath = dir(fullfile(desOutput,'CSFmask*'));
+    %     csfPath = fullfile(csfPath.folder,csfPath.name);
+    %     csfMask = logical(niftiread(csfPath));
     
     %   Create logical indexes of bvalues
     listBval = unique(bval);
@@ -314,35 +314,36 @@ for i = 1:length(subList)
     nB0 = find(bIdx(1,:));
     meanIdx = horzcat(repmat(listBval(1),[1 numel(nB0)]),listBval(2:end));
     
-    %   Compute mean array by initializing it first
-    
-    meanProc = Iproc(:,:,:,nB0) ./ Inoise;
-    meanRaw = Iraw(:,:,:,nB0) ./ Inoise;
-    
+    %   Compute means
     for j = 1:length(listBval)
-        if j == 1;
-            %   Skip B0 because already concatenated
-            continue;
-        else
-            meanProc(:,:,:,end+j) = mean(Iproc(:,:,:,bIdx(j,:)),4)./Inoise;
-            meanRaw(:,:,:,end+j) = mean(Iraw(:,:,:,bIdx(j,:)),4)./Inoise;
+        for k = 1:length(meanIdx)
+            if k <= length(nB0);
+
+                snrProc(:,:,:,k) = Iproc(:,:,:,nB0(k)) ./ Inoise;
+                snrRaw(:,:,:,k) = Iraw(:,:,:,nB0(k)) ./ Inoise;
+
+            elseif meanIdx(k) == listBval(j)
+                snrProc(:,:,:,k) = mean(Iproc(:,:,:,bIdx(j,:)),4)./Inoise;
+                snrRaw(:,:,:,k) = mean(Iraw(:,:,:,bIdx(j,:)),4)./Inoise;
+            else
+                continue;
+            end
         end
     end
     
-    %   Calculate Log
-    meanProc = 10*log10(meanProc);
-    meanRaw = 10*log10(meanRaw);
-    
     %   Create plots
-    nbins = 100;
+    nbins = 1000;
     figure;
     for j = 1:length(listBval)
-        [Nproc Eproc] = histcounts(meanProc(:,:,:,meanIdx == listBval(j)),...
-            nbins,'Normalization','Probability');
-        [Nraw Eraw] = histcounts(meanRaw(:,:,:,meanIdx == listBval(j)),...
-            nbins,'Normalization','Probability');
-        IQRproc = iqr(meanProc(:,:,:,meanIdx == listBval(j)),'all');
-        IQRraw = iqr(meanRaw(:,:,:,meanIdx == listBval(j)),'all');
+        [Nproc Eproc] = histcounts(snrProc(:,:,:,meanIdx == listBval(j)),...
+            nbins);
+        [Nraw Eraw] = histcounts(snrRaw(:,:,:,meanIdx == listBval(j)),...
+            nbins);
+        IQRproc = iqr(snrProc(:,:,:,meanIdx == listBval(j)),'all');
+        IQRraw = iqr(snrRaw(:,:,:,meanIdx == listBval(j)),'all');
+        %   Normalize from 0 to 1
+        Nproc = (Nproc - min(Nproc)) / (max(Nproc) - min(Nproc));
+        Nraw = (Nraw - min(Nraw)) / (max(Nraw) - min(Nraw));
         for k = 1:nbins
             Mproc(k) = median([Eproc(k) Eproc(k+1)]);
             Mraw(k) = median([Eraw(k) Eraw(k+1)]);
@@ -363,9 +364,10 @@ for i = 1:length(subList)
     %----------------------------------------------------------------------
     %   Testing Phase
     %----------------------------------------------------------------------
-    meanProc = zeros(size(Iproc,1),size(Iproc,2),size(Iproc,3),length(meanIdx));
+    snrProc = zeros(size(Iproc,1),size(Iproc,2),size(Iproc,3),length(meanIdx));
     for j = 1:length(listBval)
-        meanProc(:,:,:,meanIdx == listBval(j)) = Iproc(:,:,:,
+        snrProc(:,:,:,meanIdx == listBval(j)) = Iproc(:,:,:);
+    end
     
     
     
