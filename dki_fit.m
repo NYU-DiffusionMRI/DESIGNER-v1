@@ -54,6 +54,9 @@ function [b0, dt, violMask] = dki_fit(dwi, grad, mask, constraints, outliers, ma
 % For more details, contact: Jelle.Veraart@nyumc.org
 
 
+%% Set Tolarance Levels
+minParam = 1e-15;   % Smallest acceptable diffusion and kurtosis values. Values lower than this are considered violations
+
 %% limit DKI fit to b=3000
 bval = grad(:, 4);
 order = floor(log(abs(max(bval)+1))./log(10));
@@ -175,13 +178,13 @@ sumViol = zeros(1,nvoxels);
 for i = 1:nvoxels
     
     % For constraint 1
-    viol.Dmin = find(adc(:,i) < 0);
+    viol.Dmin = find(adc(:,i) <= minParam);
     
     % For constraint 2
-    viol.Kmin = find(akc(:,i) < 0);
+    viol.Kmin = find(akc(:,i) <= minParam);
     
     % For constraint 3
-    viol.DKrs = find(akc(:,i) > (3 / largestBval * adc(:,i)));
+    viol.DKrs = find(akc(:,i) >= (3 / largestBval * adc(:,i)));
     
     if constraints(1) == 1 & constraints(2) == 0 & constraints(3) == 0
         % [1 0 0]
@@ -248,7 +251,7 @@ end
 violMask = vectorize(violMask, mask);
 violMask(isnan(violMask)) = 0;
 % violMask = logical(violMask);
-disp(sprintf('...found %d constraint violations',nnz(violMask)));
+disp(sprintf('...found %d total constraint violations',nnz(violMask)));
 dt = vectorize(dt, mask);
 end
 

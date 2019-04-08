@@ -71,7 +71,9 @@ end
 filtObject.Size = sz;
 filtObject.Mask = violMask;
 filtObject.PropMask = violMask;
-filtObject.Mask = imbinarize(filtObject.Mask,th);
+filtObject.Mask(filtObject.Mask >= th) = 1;
+filtObject.Mask(filtObject.Mask < th) = 0;
+filtObject.Mask = logical(filtObject.Mask);
 filtObject.Threshold = th;
 
 centralIdx = median(1:sz);
@@ -81,6 +83,7 @@ violIdx = find(filtObject.Mask);
 filtObject.ViolatedVoxels = numel(violIdx);
 filtObject.CorrectedVoxels = 0;
 if numel(violIdx) > 0
+    disp(sprintf('...%d voxels over threshold being filtered',numel(violIdx)));
 for i = 1:length(violIdx);
     
     [I, J, K] = ind2sub([Ix,Iy,Iz],violIdx(i));
