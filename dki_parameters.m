@@ -134,7 +134,7 @@ mkt = vectorize(mkt, mask);
 % First create median filtering object based on MK
 if medianfilter
     % Specify threshold 0 for maximum aggression
-    medianFilter = createFiltObj(mk, violMask, 0, 3);
+    medianFilter = createFiltObj(mk, violMask, 0.50, 3);
     
     % Then apply filter to all maps
     if medianFilter.FilterStatus == 1
