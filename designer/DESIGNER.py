@@ -4,11 +4,12 @@
 import matlab.engine
 import os
 PATH = os.environ['PATH'].split(":")
-mrtrixbin = [s for s in PATH if "mrtrix3" in s]
+mrtrixbin = [s for s in PATH if "mrtrix3" in s][0]
 if not mrtrixbin:
     print("cannot find path to mrtrix3, please make sure <path/to/mrtrix3/bin> is in your PATH")
     quit()
 mrtrixlib = "".join(mrtrixbin)[:-3]+'lib'
+print(mrtrixlib)
 
 import inspect, sys, numpy as np, math, gzip, shutil
 from distutils.spawn import find_executable
@@ -195,17 +196,17 @@ if app.args.degibbs:
 
 # pre-eddy alignment for multiple input series
 if app.args.prealign:
-	if len(DWInlist) != 1:
-		miflist = []
-		for idx,i in enumerate(DWInlist):
-			run.command('mrconvert -coord 3 ' + idxlist[idx] + ' working.mif dwipretf' + str(idx) + '.mif')
-			run.command('dwiextract -bzero dwipretf' + str(idx) + '.mif - | mrconvert -coord 3 0 - b0pretf' + str(idx) + '.mif')
-			if idx > 0:
-				run.command('mrregister -type rigid -noreorientation -rigid rigidXform' + str(idx) + 'to0.txt b0pretf' + str(idx) + '.mif b0tf0.mif')
-				run.command('mrtransform -linear rigidXform' + str(idx) + 'to0.txt dwipretf' + str(idx) + '.mif dwitf' + str(idx) + '.mif')
-				miflist.append('dwitf' + str(idx) + '.mif')
-		DWImif = ' '.join(miflist)
-		run.command('mrcat -axis 3 dwitf0.mif ' + DWImif + ' dwitf.mif')
+    if len(DWInlist) != 1:
+        miflist = []
+        for idx,i in enumerate(DWInlist):
+            run.command('mrconvert -coord 3 ' + idxlist[idx] + ' working.mif dwipretf' + str(idx) + '.mif')
+            run.command('dwiextract -bzero dwipretf' + str(idx) + '.mif - | mrconvert -coord 3 0 - b0pretf' + str(idx) + '.mif')
+            if idx > 0:
+                run.command('mrregister -type rigid -noreorientation -rigid rigidXform' + str(idx) + 'to0.txt b0pretf' + str(idx) + '.mif b0tf0.mif')
+                run.command('mrtransform -linear rigidXform' + str(idx) + 'to0.txt dwipretf' + str(idx) + '.mif dwitf' + str(idx) + '.mif')
+                miflist.append('dwitf' + str(idx) + '.mif')
+        DWImif = ' '.join(miflist)
+        run.command('mrcat -axis 3 dwitf0.mif ' + DWImif + ' dwitf.mif')
         run.function(os.remove,'working.mif')
         run.command('mrconvert dwitf.mif working.mif')
 
