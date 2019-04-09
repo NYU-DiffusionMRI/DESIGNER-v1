@@ -63,7 +63,7 @@ function [b0, dt] = dki_fit(dwi, grad, mask, constraints, outliers, maxbval)
     end
     
     if ~exist('maxbval','var') || isempty(maxbval)
-        maxbval = 2.5;
+        maxbval = 3;
     end
     list = bval<=maxbval;
     dwi = dwi(:,:,:,list);
@@ -79,8 +79,12 @@ function [b0, dt] = dki_fit(dwi, grad, mask, constraints, outliers, maxbval)
         error('');
     end
     grad = double(grad);
-    grad(:,1:3) = bsxfun(@rdivide,grad(:,1:3),sqrt(sum(grad(:,1:3).^2,2))); grad(isnan(grad)) = 0;
+    normgrad = sqrt(sum(grad(:, 1:3).^2, 2)); normgrad(normgrad == 0) = 1;
+    grad(:, 1:3) = grad(:, 1:3)./repmat(normgrad, [1 3]);
+    grad(isnan(grad)) = 0;
+
     bval = grad(:, 4);
+
     if ~exist('mask','var') || isempty(mask)
         mask = true(x, y, z);
     end
