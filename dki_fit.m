@@ -55,7 +55,7 @@ function [b0, dt, violMask] = dki_fit(dwi, grad, mask, constraints, outliers, ma
 
 
 %% Set Tolarance Levels
-minParam = 1e-15;   % Smallest acceptable diffusion and kurtosis value. Values lower than this are considered violations
+minParam = 1e-8;   % Smallest acceptable diffusion and kurtosis value. Values lower than this are considered violations
 
 %% limit DKI fit to b=3000
 bval = grad(:, 4);
