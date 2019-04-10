@@ -164,7 +164,22 @@ dt = dt(2:22, :);
 D_apprSq = 1./(sum(dt([1 4 6],:),1)/3).^2;
 dt(7:21,:) = dt(7:21,:) .* D_apprSq(ones(15,1),:);
 b0 = vectorize(b0, mask);
-[akc, adc] = AKC(dt, grad(:,1:3));
+
+
+%% Compute Violations
+% Find unconstrained diffusion tensor
+parfor i = 1:nvoxels
+    in_ = outliers(:, i) == 0;
+    b_ = b(in_, :);
+    if isempty(b_) || cond(b(in_, :))>1e15
+        dtV(:, i) = NaN
+    else
+        wi = w(:,i); Wi = diag(wi(in_));
+        logdwii = log(dwi(in_,i));
+        dtV(:,i) = (Wi*b_)\(Wi*logdwii);
+    end
+end
+[akc, adc] = AKC(dtV, grad(:,1:3));
 adc = adc(find(bval == largestBval),:);
 akc = akc(find(bval == largestBval),:);
 
@@ -216,12 +231,6 @@ for i = 1:nvoxels
     end
 end
 
-%     if exist(viol.Dmin)
-%     % Count unique indexes of all violations
-%     sumViol(i) = numel(unique(cat(1,viol.Dmin,viol.Kmin,viol.DKrs)));
-%     end
-
-
 % A legal violation is one where there are more than 50% directional
 % violations and at least 15 directional violations. We first check for
 % proportions of violation where any voxels that has over 50% violations is
@@ -234,16 +243,6 @@ end
 parfor i = 1:length(sumViol)
     violMask(i) = sumViol(i) / imgDirs;
 end
-
-% parfor i = 1:length(sumViol)
-%     violProp = (sumViol(i) / imgDirs) > 0;
-%     goodDirs = imgDirs - sumViol(i) > 15;
-%     if violProp | ~goodDirs
-%         violMask(i) = 1;
-%     else
-%        violMask(i) = 0;
-%     end
-% end
 
 % Reshape violation logical vector into a logical mask. Locations where a
 % voxel = 1 is where a violation occured.
