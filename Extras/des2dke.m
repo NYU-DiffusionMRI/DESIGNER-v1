@@ -7,25 +7,12 @@ function des2dke(inDir)
 %   Email:  dhiman@musc.edu
 
 %% Load Paths
-folder = '/Users/sid/Downloads/Median_Tests/HARDI5-Output/DKE';
 dwi_Path = fullfile(inDir,'dwi_designer.nii');
 bval_Path = fullfile(inDir,'dwi_designer.bval');
 bvec_Path = fullfile(inDir,'dwi_designer.bvec');
 mask_Path = fullfile(inDir,'brain_mask.nii');
 dke_Path = fullfile(inDir,'DKE');
-
-%% Create DKE Dir and Copy Files
 mkdir(dke_Path);
-copyfile(dwi_Path,dke_Path);
-copyfile(bval_Path,dke_Path);
-copyfile(bvec_Path,dke_Path);
-copyfile(mask_Path,dke_Path);
-
-% Update path variables
-dwi_Path = fullfile(dke_Path,'dwi_designer.nii');
-bval_Path = fullfile(dke_Path,'dwi_designer.bval');
-bvec_Path = fullfile(dke_Path,'dwi_designer.bvec');
-mask_Path = fullfile(dke_Path,'brain_mask.nii');
 
 %% Read Files
 fprintf('1: Reading Files\n');
@@ -57,7 +44,12 @@ end
 b0_mean = b0_mean / length(b0_idx);
 
 %% Replace Mean and Modify BVAL/BVEC
-fprintf('3: Writing Files');
+% Update path variables
+dwi_Path = fullfile(dke_Path,'dke.nii');
+bval_Path = fullfile(dke_Path,'dke.bval');
+bvec_Path = fullfile(dke_Path,'dke.bvec');
+
+fprintf('3: Writing Files\n');
 dwi(:,:,:,1) = b0_mean;
 
 dwi(:,:,:,b0_idx(2:end)) = [];
@@ -65,16 +57,21 @@ for i = 1:size(dwi,4)
     dwi(:,:,:,i) = dwi(:,:,:,i) .* brainmask;
 end
 hdr.ImageSize = size(dwi);
-niftiwrite(dwi,dwi_Path,hdr);
 fprintf('\tA:...writing image\n');
+niftiwrite(dwi,dwi_Path,hdr);
 
 bval(b0_idx(2:end)) = [];
 bvec(:,b0_idx(2:end)) = [];
+fprintf('B:...writing BVAL\n');
+dlmwrite(bval_Path,bval,',');
+fprintf('C:...writing BVAL\n');
+dlmwrite(bvec_Path,bvec,',');
+
 [p,~,~] = fileparts(bvec_Path);
 Gradient1 = bvec';
 Gradient1 = Gradient1(b1_idx,:);
+fprintf('\tD:...writing gradient\n');
 save(fullfile(p,'gradient_dke.txt'),'Gradient1','-ASCII');
-fprintf('\tA:...writing gradient\n');
 
 %% Create DKE Parameter File
 fprintf('4: Creating parameter files\n');
@@ -93,3 +90,5 @@ end
 fclose(fid);
 fclose(fidout);
 fprintf('.....Completed.....\n');
+
+
