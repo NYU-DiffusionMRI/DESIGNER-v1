@@ -1,0 +1,81 @@
+% paths
+
+studydir = 'dir-sub-changeme';                 		% root folder for data from all study subjects
+
+subject_list = {''};                        		% cell array of subject sub-folders within the root folder studydir
+
+% preprocessing parameters
+
+preprocess_options.format = 'nifti';        		% input image format ('dicom', 'nifti' or 'bruker') (default: 'dicom')
+preprocess_options.navg = 1;                		% number of DKI series (default: 2); each DKI series must contain a b = 0 image followed by diffusion-weighted images; all series must use identical acquisition protocols (i.e., same diffusion weightings and gradient directions)
+preprocess_options.extra_b0 = 0;            		% whether (1) or not (0) there is an additional b = 0 series (default: 1); used when preprocess_options.format = 'dicom'
+preprocess_options.coreg_flag = 1;          		% whether (1) or not (0) to perform 6-parameter rigid-body coregistration between diffusion-weighted images (default: 1); used when preprocess_options.format = 'dicom' or 'bruker'
+preprocess_options.series_description = {'DKI1' 'DKI_B0'};  % list of dicom series descriptions; used when preprocess_options.format = 'dicom'
+preprocess_options.fn_nii = 'dke.nii';       		% four-dimensional nifti image file name; no coregistration is performed between the diffusion-weighted images; used when preprocess_options.format = 'nifti'; the first image must be the b = 0 image
+
+% imaging diffusion weightings and directions
+
+bval = [0 1000 2000];                          		% diffusion weightings (b-values) in s/mm^2 units; the first element of vector must always be 0
+
+ndir = changeme;                                      	% number of gradient directions; if a scalar value is specified, the number of gradient directions for all b values is set to the scalar; otherwise, a 1-by-(nbval-1) vector should be specified, with each element of the vector corresponding to the number of gradient directions for a nonzero b-value
+
+fn_gradients = 'fn-gradients-changeme';	% text file containing the gradient vectors; each row corresponds to a gradient vector; if a different gradient set was used for each b-value, a 1-by-(nbval-1) cell array of file names should be specified, with each cell specifying the gradient file name for the corresponding nonzero b-value
+
+idx_gradients = {1:ndir 1:ndir};                 	% indices of gradient directions to be used for DKI map estimation; unacceptable diffusion-weighted images (e.g., those affected by motion- or patient table vibration-induced diffusion signal loss) can be excluded here; there must be as many cells as there are nonzero b-values, with each cell corresponding to a nonzero b-value
+
+idx_1st_img = 1;                                	% index of the first diffusion-weighted nifti image for each b-value (typically 0 or 1) (default: 1); used when preprocess_options.format = 'dicom'; this is rarely changed
+
+% constraints on directional kurtoses
+
+Kmin = 0;                                       	% constraint on minimum directional kurtosis (cf. Tabesh et al. (2011)) (default: 0); this is rarely changed
+NKmax = 3;                                      	% parameter defining the constraint on maximum directional kurtosis (cf. Eq. 6 in Tabesh et al. (2011)); this is rarely changed
+
+% thresholds on output kurtosis maps
+
+Kmin_final = 0;                             		% lower (Kmin_final) and upper (Kmax_final) thresholds applied to output (mean, axial, and radial) kurtosis maps (default: Kmin_final = 0, Kmax_final = 3)
+Kmax_final = 3;
+
+% tissue/background segmentation
+
+T = 0;                                            	% background threshold (default: 50); voxels with b = 0 intensity values above this threshold (after optional connected component analysis) are processed
+find_brain_mask_flag = 1;                      		% whether (1) or not (0) to apply connected component analysis to refine the binary brain mask obtained by applying threshold T to b = 0 image (default: 1)
+
+% DKI fitting method and parameters
+
+dki_method.no_tensor = 0;                   		% whether (1) or not (0) to estimate parametric maps using directional signal fits instead of the default tensor fit of Tabesh et al. (2011) (default: 0); directional fits only allow estimation of mean diffusivity and mean kurtosis; not recommended unless the number of acquired gradient directions is less than 15
+dki_method.linear_weighting = 1;            		% unweighted (0) or weighted (1) linear least-squares (default: 1)
+dki_method.linear_constrained = 1;          		% unconstrained (0) or constrained (1) linear least-squares (cf. Tabesh et al. (2011)) (default: 1)
+dki_method.nonlinear = 0;                   		% unconstrained nonlinear least-squares (default: 0)
+dki_method.linear_violations = 1;           		% whether (1) or not (0) to generate maps of constraint violations (default: 0); intensity of each voxel in the violation maps represents the proportion of constraints on directional diffusivities ('d_viol' map) and kurtoses ('kmin_viol' and 'kmax_viol' maps) violated by the unconstrained linear least-squares solution; the unconstrained solution used to obtain the violation maps will depend on dki_method.linear_weighting and dki_method.robust_option parameters
+dki_method.robust_option = 0;               		% robust fitting option (default: 0): (0) do not use robust fitting; (1) RESTORE-type algorithm (outlier detection and removal followed by tensor refitting) with a user-supplied 'noise tolerance level' (dki_method.noise_tolerance) expressed as a fraction of the diffusion signal magnitude
+dki_method.noise_tolerance = 0.09;          		% threshold for outlier detection (used when dki_method.robust_option = 1); the diffusion signal for a gradient direction is declared an outlier if abs(log(diffusion signal) - log(predicted diffusion signal)) > dki_method.noise_tolerance
+
+% DTI fitting method and parameters
+
+dti_method.dti_flag = 0;                    		% whether (1) or not (0) to estimate DTI parametric maps based on the DTI (in addition to DKI) signal model (default: 0)
+dti_method.dti_only = 0;                    		% whether (1) or not (0) to only estimate DTI parametric maps (no DKI map estimation) (default: 0)
+dti_method.no_tensor = 0;                   		% whether (1) or not (0) to estimate parametric maps using directional signal fits instead of the default diffusion tensor fit (default: 0); directional fits only allow estimation of mean diffusivity; not recommended unless the number of acquired gradient directions is less than 6
+dti_method.linear_weighting = 1;            		% unweighted (0) or weighted (1) linear least-squares (default: 1); weighting is based on the diffusion signal magnitude
+dti_method.b_value = [1000 2000];                  		% vector of nonzero b-values used for DTI map estimation; multiple b-values are supported, e.g., [1000 2000]
+dti_method.directions = {1:ndir 1:ndir};           		% indices of gradient directions to be used for DTI map estimation; unacceptable diffusion-weighted images (e.g., those affected by with motion- or patient table vibration-induced diffusion signal loss) can be excluded here; there must be as many cells as there are nonzero b-values, with each cell corresponding to a nonzero b-value; indices are relative to the indices specified in idx_gradients
+dti_method.robust_option = 0;               		% robust fitting option (default: 0): (0) do not use robust fitting; (1) RESTORE-type algorithm (outlier detection and removal followed by tensor refitting) with a user-supplied 'noise tolerance level' (dti_method.noise_tolerance) expressed as a fraction of the diffusion signal level
+dti_method.noise_tolerance = 0.09;          		% threshold for outlier detection (used when dti_method.robust_option = 1); the diffusion signal for a gradient direction is declared an outlier if abs(log(diffusion signal) - log(predicted diffusion signal)) > dti_method.noise_tolerance
+
+% diffusion-weighted image filtering
+
+fwhm_img = 0 * [2.0 2.0 2.0];            		% full width at half maximum (FWHM) (in mm) of Gaussian kernel for smoothing diffusion-weighted images (default: 1.25 * voxel size); a zero value indicates no smoothing
+
+% Rician noise subtraction
+
+fn_noise = '';                              		% user-supplied map of Rician noise level (default: '' (i.e., none)); noise subtraction is based on the method of McGibney and Smith (1993); estimated signal s_hat at each voxel is obtained as s_hat = (s^2 - n^2)^0.5, where s is the measured signal and n is the noise level at that voxel
+fwhm_noise = 0;                             		% FWHM (in mm) of Gaussian kernel for smoothing noise image; a zero value indicates no smoothing (default: 0)
+
+% parametric map filtering
+
+median_filter_method = 1;                   		% selective median filtering applied to voxels that violate the minimum directional kurtosis constraints (default: 2): (0) no filtering; (1) weak filtering (voxels with less than 15 unviolated constraints will be filtered); (2) strong filtering (voxels with any constraint violation will be filtered)
+
+% parametric map interpolation
+
+map_interpolation_method.flag = 0;          		% whether (1) or not (0) to interpolate the parametric maps (default: 1)
+map_interpolation_method.order = 1;         		% interpolation polynomial order: (0) nearest neighbor; (1) trilinear; (2 and up) higher order (default: 1)
+map_interpolation_method.resolution = 1;    		% target resolution (isotropic) in mm for the interpolated maps (default: 1 mm)
