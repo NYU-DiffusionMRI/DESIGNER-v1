@@ -53,11 +53,11 @@ function filtObject = createFiltObj(Im, violMask, th, sz)
 %   =======================================================================
 
 [Ix Iy Iz] = size(Im);
-[Mx My Mz] = size(violMask);
+[Mx My Mz] = size(violMask.Unconstrained);
 Im = double(Im);
 
 %% Perform Checks
-if prod(size(Im)) ~= prod(size(violMask))
+if prod(size(Im)) ~= prod(size(violMask.Unconstrained))
     error('Violation mask and parameter map sizes are not equal');
     % Ensure filter box matrix is odd-sized
 elseif mod(sz,2) == 0
@@ -69,12 +69,31 @@ end
 %% Create Filter
 % Distance from centroid to edges of 3D box filter
 filtObject.Size = sz;
-filtObject.Mask = violMask;
-filtObject.PropMask = violMask;
-filtObject.Mask(filtObject.Mask >= th) = 1;
-filtObject.Mask(filtObject.Mask < th) = 0;
-filtObject.Mask = logical(filtObject.Mask);
+
+filtObject.PropMask = violMask.Unconstrained;
+filtObject.DirMask = violMask.Directional;
+
 filtObject.Threshold = th;
+if th == 0;
+    error('Threshold cannot be zero. Please disable median filtering flag');
+elseif th > 0 & th <= 1
+    filtObject.Mask = violMask.Unconstrained;
+    filtObject.FilterType = 'Proportional Violations';
+    filtObject.Mask(filtObject.Mask >= th) = 1;
+    filtObject.Mask(filtObject.Mask < th) = 0;
+    filtObject.Mask = logical(filtObject.Mask);
+    filtMsg = [num2str(th*100) '%'];
+elseif th > 1
+    filtObject.Mask = violMask.Directional;
+    filtObject.FilterType = 'Directional Violations';
+    filtObject.Mask(filtObject.Mask < th) = 1;
+    filtObject.Mask(filtObject.Mask >= th) = 0;
+    filtObject.Mask = logical(filtObject.Mask);
+    filtMsg = [' less than ' num2str(th) ' good direction(s)'];
+else
+    error('Please specify a threshold range. [0 1] for proportional and (1 ndir] for directional');
+end
+
 
 centralIdx = median(1:sz);
 d2move = abs(sz - centralIdx);
@@ -84,101 +103,101 @@ filtObject.ViolatedVoxels = numel(violIdx);
 filtObject.CorrectedVoxels = 0;
 if numel(violIdx) > 0
     disp(sprintf('...%d voxels over threshold being filtered',numel(violIdx)));
-for i = 1:length(violIdx);
-    
-    [I, J, K] = ind2sub([Ix,Iy,Iz],violIdx(i));
-    
-    % Index beginning and ending of median filter (box) matrix
-    Ib = I - d2move;
-    Ie = I + d2move;
-    
-    Jb = J - d2move;
-    Je = J + d2move;
-    
-    Kb = K - d2move;
-    Ke = K + d2move;
-    
-    % Place algorithm in a try-catch loop to prevent out-of-index issues
-    % from violation pixels too close to edge.
-    try
-        % Get reference image and violation mask patches
-        patchViol = violMask(Ib:Ie, Jb:Je, Kb:Ke);
-        patchI = Im(Ib:Ie, Jb:Je, Kb:Ke);
-        nViol = numel(find(patchViol));
+    for i = 1:length(violIdx);
         
-        % Here a check is performed to compute the number of violations in a
-        % patch. If all voxels are violations, do nothing. Otherwise, exclude
-        % violation voxels from the median calculation
-        if nViol == sz^3;
-            % If every voxel in patch is a violation, replace nothing
-            filtObject.PatchIdx(i) = NaN;
-            continue;
-        else
-            % Sort all patch values into ascending order and remove NaNs
-            patchVals = sort(patchI(find(patchViol == 0)),'ascend');
-            patchVals = patchVals(~isnan(patchVals));
-            nVals = numel(patchVals);
+        [I, J, K] = ind2sub([Ix,Iy,Iz],violIdx(i));
+        
+        % Index beginning and ending of median filter (box) matrix
+        Ib = I - d2move;
+        Ie = I + d2move;
+        
+        Jb = J - d2move;
+        Je = J + d2move;
+        
+        Kb = K - d2move;
+        Ke = K + d2move;
+        
+        % Place algorithm in a try-catch loop to prevent out-of-index issues
+        % from violation pixels too close to edge.
+        try
+            % Get reference image and violation mask patches
+            patchViol = violMask(Ib:Ie, Jb:Je, Kb:Ke);
+            patchI = Im(Ib:Ie, Jb:Je, Kb:Ke);
+            nViol = numel(find(patchViol));
             
-            % Different median algorithms based on whether odd or even
-            if mod(nVals,2) == 0    % If even
-                % Find the middle two numbers and average them, find the
-                % index of patch value closest to mean
-                medianIdxTmp = [nVals/2, nVals/2 + 1];
-                medMeanTmp = mean([patchVals(medianIdxTmp(1)),...
-                    patchVals(medianIdxTmp(2))]);
+            % Here a check is performed to compute the number of violations in a
+            % patch. If all voxels are violations, do nothing. Otherwise, exclude
+            % violation voxels from the median calculation
+            if nViol == sz^3;
+                % If every voxel in patch is a violation, replace nothing
+                filtObject.PatchIdx(i) = NaN;
+                continue;
+            else
+                % Sort all patch values into ascending order and remove NaNs
+                patchVals = sort(patchI(find(patchViol == 0)),'ascend');
+                patchVals = patchVals(~isnan(patchVals));
+                nVals = numel(patchVals);
                 
-                % Then check if mean is same as patch values from the two
-                % central median indexes. If it is, replace it by either
-                % medianIdx1 or medianIdx2
-                if medMeanTmp == patchVals(medianIdxTmp(1)) & medMeanTmp == patchVals(medianIdxTmp(2))
-                    medianIdx = medianIdxTmp(1);
+                % Different median algorithms based on whether odd or even
+                if mod(nVals,2) == 0    % If even
+                    % Find the middle two numbers and average them, find the
+                    % index of patch value closest to mean
+                    medianIdxTmp = [nVals/2, nVals/2 + 1];
+                    medMeanTmp = mean([patchVals(medianIdxTmp(1)),...
+                        patchVals(medianIdxTmp(2))]);
                     
-                    % If not, find the index of voxel closest to mean. That
-                    % will be the median.
-                else
-                    medDist = abs([medMeanTmp - patchVals(medianIdxTmp(1)),...
-                        medMeanTmp - patchVals(medianIdxTmp(2))]);
-                    medDist = single(medDist);
-                    % If the distance of mean from two central values is
-                    % the same, pick the smaller index medianIdx1
-                    if medDist(1) == medDist(2)
+                    % Then check if mean is same as patch values from the two
+                    % central median indexes. If it is, replace it by either
+                    % medianIdx1 or medianIdx2
+                    if medMeanTmp == patchVals(medianIdxTmp(1)) & medMeanTmp == patchVals(medianIdxTmp(2))
                         medianIdx = medianIdxTmp(1);
+                        
+                        % If not, find the index of voxel closest to mean. That
+                        % will be the median.
                     else
-                        % Else median index is the one closer to mean
-                        medianIdx = medianIdxTmp(find(medDist == min(medDist)));
+                        medDist = abs([medMeanTmp - patchVals(medianIdxTmp(1)),...
+                            medMeanTmp - patchVals(medianIdxTmp(2))]);
+                        medDist = single(medDist);
+                        % If the distance of mean from two central values is
+                        % the same, pick the smaller index medianIdx1
+                        if medDist(1) == medDist(2)
+                            medianIdx = medianIdxTmp(1);
+                        else
+                            % Else median index is the one closer to mean
+                            medianIdx = medianIdxTmp(find(medDist == min(medDist)));
+                        end
                     end
+                    
+                else   % If odd
+                    medianIdx = (nVals + 1) / 2;
                 end
                 
-            else   % If odd
-                medianIdx = (nVals + 1) / 2;
+                filtObject.OriginalVal(i) = Im(I,J,K);
+                filtObject.CorrectedVal(i) = patchVals(medianIdx);
+                filtObject.MedianIdx(i) = medianIdx;
+                % Locate median value in patch and get index. If multiple
+                % indexes are present, pick the lowest one
+                filtObject.PatchIdx(i) = min(find(...
+                    patchI == patchVals(medianIdx)));
             end
-            
-            filtObject.OriginalVal(i) = Im(I,J,K);
-            filtObject.CorrectedVal(i) = patchVals(medianIdx);
-            filtObject.MedianIdx(i) = medianIdx;
-            % Locate median value in patch and get index. If multiple
-            % indexes are present, pick the lowest one
-            filtObject.PatchIdx(i) = min(find(...
-                patchI == patchVals(medianIdx)));
+        catch
+            % Some violated voxels may be on the edge of the image and the
+            % median filter will fail. This portion will catch such voxels and
+            % label the MedianIdx as NaN to specify no median exists. Because
+            % the voxel is very close to the edge, a median
+            disp(sprintf('Violation voxel [%d,%d,%d] occurs at image edge...skipping',...
+                I,J,K));
+            filtObject.CorrectedVal(i) = NaN;
+            filtObject.MedianIdx(i) = NaN;
+            filtObject.PatchIdx(i) = NaN;
         end
-    catch
-        % Some violated voxels may be on the edge of the image and the
-        % median filter will fail. This portion will catch such voxels and
-        % label the MedianIdx as NaN to specify no median exists. Because
-        % the voxel is very close to the edge, a median
-        disp(sprintf('Violation voxel [%d,%d,%d] occurs at image edge...skipping',...
-            I,J,K));
-        filtObject.CorrectedVal(i) = NaN;
-        filtObject.MedianIdx(i) = NaN;
-        filtObject.PatchIdx(i) = NaN;
+        filtObject.X(i) = I;
+        filtObject.Y(i) = J;
+        filtObject.Z(i) = K;
     end
-    filtObject.X(i) = I;
-    filtObject.Y(i) = J;
-    filtObject.Z(i) = K;
-end
-filtObject.CorrectedVoxels = numel(find(~isnan(filtObject.MedianIdx)));
-disp(sprintf('...filter object created with %d%% threshold',th*100));
-filtObject.FilterStatus = 1;
+    filtObject.CorrectedVoxels = numel(find(~isnan(filtObject.MedianIdx)));
+    disp(sprintf('...filter object created with %s threshold',filtMsg));
+    filtObject.FilterStatus = 1;
 else
     disp('...No violations found exceeding threshold');
     filtObject.FilterStatus = 0;

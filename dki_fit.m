@@ -238,19 +238,23 @@ end
 % good directions, where the voxel meeting this criteria is marked for
 % replacement.
 
-% Instead of marking logical locations of violations, create a mask that
-% shows percentage violations instead
 parfor i = 1:length(sumViol)
-    violMask(i) = sumViol(i) / imgDirs;
+    Unconstrained(i) = sumViol(i) / imgDirs;
+    Directional(i) = imgDirs - sumViol(i);
 end
+
+violMask.Unconstrained = Unconstrained;
+violMask.Directional = Directional;
+
 
 % Reshape violation logical vector into a logical mask. Locations where a
 % voxel = 1 is where a violation occured.
 
-violMask = vectorize(violMask, mask);
-violMask(isnan(violMask)) = 0;
-% violMask = logical(violMask);
-disp(sprintf('...found %d total constraint violations',nnz(violMask)));
+violMask.Unconstrained = vectorize(violMask.Unconstrained, mask);
+violMask.Directional = vectorize(violMask.Directional, mask);
+violMask.Unconstrained(isnan(violMask.Unconstrained)) = 0;
+violMask.Directional(isnan(violMask.Directional)) = imgDirs;
+% disp(sprintf('...found %d total constraint violations',nnz(violMask)));
 dt = vectorize(dt, mask);
 end
 
