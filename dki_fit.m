@@ -179,6 +179,9 @@ parfor i = 1:nvoxels
         dtV(:,i) = (Wi*b_)\(Wi*logdwii);
     end
 end
+dtV = dtV(2:22, :);
+D_apprSq = 1./(sum(dtV([1 4 6],:),1)/3).^2;
+dtV(7:21,:) = dtV(7:21,:) .* D_apprSq(ones(15,1),:);
 [akc, adc] = AKC(dtV, grad(:,1:3));
 adc = adc(find(bval == largestBval),:);
 akc = akc(find(bval == largestBval),:);
