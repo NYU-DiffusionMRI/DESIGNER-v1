@@ -23,9 +23,7 @@ function V = applyMedFilt(Im, filtObject)
 %   Created with MATLAB 2018b
 %   =======================================================================
 
-[Ix Iy Iz] = size(Im);
 Im = double(Im);
-V = Im;
 
 %% Perform Checks
 % Check for image and violation map size
@@ -38,12 +36,22 @@ else
     disp('...applying median filter (2/2)');
 end
 
+%% Pad Image and Mask
+% Apply a nan-padding to all 3 dimensions of image and nan padding to mask; 
+% same size as the distance between centroid of patch to edge. This enables
+% median filtering of edges.
+centralIdx = median(1:filtObject.Size);
+d2move = abs(filtObject.Size - centralIdx);
+Im = padarray(Im,[d2move d2move d2move],nan,'both');
+V = Im;
+% violMask = padarray(filtObject.Mask,[d2move d2move d2move],0,'both');
+
 %% Create Filter
 if filtObject.FilterStatus == 1
     % Distance from centroid to edges of 3D box filter
-    centralIdx = median(1:filtObject.Size);
-    d2move = abs(filtObject.Size - centralIdx);
-    violIdx = find(filtObject.Mask);
+%     centralIdx = median(1:filtObject.Size);
+%     d2move = abs(filtObject.Size - centralIdx);
+%     violIdx = find(violMask);
     
     for i = 1:length(filtObject.PatchIdx)
         
@@ -51,22 +59,23 @@ if filtObject.FilterStatus == 1
         % nothing and jump to next violation.
         
         if ~isnan(filtObject.PatchIdx(i))
-            [I, J, K] = ind2sub([Ix,Iy,Iz],violIdx(i));
+%             [I, J, K] = ind2sub([Ix,Iy,Iz],violIdx(i));
             
             % Index beginning and ending of median filter (box) matrix
-            Ib = I - d2move;
-            Ie = I + d2move;
+            Ib = filtObject.X(i) - d2move;
+            Ie = filtObject.X(i) + d2move;
             
-            Jb = J - d2move;
-            Je = J + d2move;
+            Jb = filtObject.Y(i) - d2move;
+            Je = filtObject.Y(i) + d2move;
             
-            Kb = K - d2move;
-            Ke = K + d2move;
+            Kb = filtObject.Z(i) - d2move;
+            Ke = filtObject.Z(i) + d2move;
             
-            patchViol = filtObject.Mask(Ib:Ie, Jb:Je, Kb:Ke);
+%             patchViol = filtObject.Mask(Ib:Ie, Jb:Je, Kb:Ke);
             patchI = Im(Ib:Ie, Jb:Je, Kb:Ke);
             
-            V(I,J,K) = patchI(filtObject.PatchIdx(i));
+            V(filtObject.X(i),filtObject.Y(i),filtObject.Z(i)) = ...
+                patchI(filtObject.PatchIdx(i));
             
         else
             continue;
@@ -74,4 +83,6 @@ if filtObject.FilterStatus == 1
     end
 else
 end
+%% Unpad Image
+V = V(d2move+1:end-d2move,d2move+1:end-d2move,d2move+1:end-d2move);
 end

@@ -52,10 +52,6 @@ function filtObject = createFiltObj(Im, violMask, th, sz)
 %   Created with MATLAB 2018b
 %   =======================================================================
 
-[Ix Iy Iz] = size(Im);
-[Mx My Mz] = size(violMask.Unconstrained);
-Im = double(Im);
-
 %% Perform Checks
 if prod(size(Im)) ~= prod(size(violMask.Unconstrained))
     error('Violation mask and parameter map sizes are not equal');
@@ -98,7 +94,19 @@ end
 centralIdx = median(1:sz);
 d2move = abs(sz - centralIdx);
 
-violIdx = find(filtObject.Mask);
+%% Pad Image and Mask
+% Apply a nan-padding to all 3 dimensions of image and nan padding to mask; 
+% same size as the distance between centroid of patch to edge. This enables
+% median filtering of edges.
+Im = padarray(Im,[d2move d2move d2move],nan,'both');
+violMask = padarray(filtObject.Mask,[d2move d2move d2move],0,'both');
+
+[Ix Iy Iz] = size(Im);
+[Mx My Mz] = size(violMask);
+Im = double(Im);
+
+%% Begin Median Calculation
+violIdx = find(violMask);
 filtObject.ViolatedVoxels = numel(violIdx);
 filtObject.CorrectedVoxels = 0;
 if numel(violIdx) > 0
@@ -201,4 +209,5 @@ if numel(violIdx) > 0
 else
     disp('...No violations found exceeding threshold');
     filtObject.FilterStatus = 0;
+end
 end
