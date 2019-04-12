@@ -277,7 +277,7 @@ for i = 1:length(subList)
     %   Load all files
     bvalPath = dir(fullfile(desOutput,'*bval'));
     bvalPath = fullfile(bvalPath.folder,bvalPath.name);
-    bval = round(single(load(bvalPath)));
+    bval = round(load(bvalPath));
     
     %     bvecPath = dir(fullfile(desOutput,'*bvec'));
     %     bvecPath = fullfile(bvecPath.folder,bvecPath.name);
@@ -293,6 +293,7 @@ for i = 1:length(subList)
     noisePath = dir(fullfile(desOutput,'fullnoisemap*'));
     noisePath = fullfile(noisePath.folder,noisePath.name);
     Inoise = niftiread(noisePath);
+    Inoise(find(isnan(Inoise))) = 0;
     
     brainPath = dir(fullfile(desOutput,'brain_mask*'));
     brainPath = fullfile(brainPath.folder,brainPath.name);
@@ -300,7 +301,9 @@ for i = 1:length(subList)
     
     %     csfPath = dir(fullfile(desOutput,'CSFmask*'));
     %     csfPath = fullfile(csfPath.folder,csfPath.name);
-    %     csfMask = logical(niftiread(csfPath));
+    %     csfMask = ~logical(niftiread(csfPath));
+    %
+    %     histoMask = logical(brainMask .* csfMask);
     
     %   Create logical indexes of bvalues
     listBval = unique(bval);
@@ -315,16 +318,37 @@ for i = 1:length(subList)
     meanIdx = horzcat(repmat(listBval(1),[1 numel(nB0)]),listBval(2:end));
     
     %   Compute means -----------------------------------------------------
+    %     for j = 1:length(listBval)
+    %         for k = 1:length(meanIdx)
+    %             if k <= length(nB0);
+    %                 snrProc(:,:,:,k) = (Iproc(:,:,:,nB0(k)) ./ Inoise) .* brainMask;
+    %                 snrRaw(:,:,:,k) = (Iraw(:,:,:,nB0(k)) ./ Inoise) .* brainMask;
+    %
+    %             elseif meanIdx(k) == listBval(j)
+    %                 snrProc(:,:,:,k) = (mean(Iproc(:,:,:,bIdx(j,:)),4)./Inoise) .* brainMask;
+    %                 snrProc(:,:,:,k) =
+    %                 snrRaw(:,:,:,k) = (mean(Iraw(:,:,:,bIdx(j,:)),4)./Inoise) .* brainMask;
+    %             else
+    %                 continue;
+    %             end
+    %         end
+    %     end
+    
     for j = 1:length(listBval)
         for k = 1:length(meanIdx)
             if k <= length(nB0);
+                tmpProc = Iproc(:,:,:,nB0(k));
+                snrProc(:,k) = tmpProc(brainMask);
                 
-                snrProc(:,:,:,k) = Iproc(:,:,:,nB0(k)) ./ Inoise;
-                snrRaw(:,:,:,k) = Iraw(:,:,:,nB0(k)) ./ Inoise;
+                tmpRaw = Iraw(:,:,:,nB0(k)) ./ Inoise;
+                snrRaw(:,k) = tmpRaw(brainMask);
                 
             elseif meanIdx(k) == listBval(j)
-                snrProc(:,:,:,k) = mean(Iproc(:,:,:,bIdx(j,:)),4)./Inoise;
-                snrRaw(:,:,:,k) = mean(Iraw(:,:,:,bIdx(j,:)),4)./Inoise;
+                tmpProc = mean(Iproc(:,:,:,bIdx(j,:)),4)./Inoise;
+                snrProc(:,k) = tmpProc(brainMask);
+                
+                tmpRaw = mean(Iraw(:,:,:,bIdx(j,:)),4)./Inoise;
+                snrRaw(:,k) = tmpRaw(brainMask);
             else
                 continue;
             end
@@ -332,20 +356,19 @@ for i = 1:length(subList)
     end
     
     %   Histogram counts --------------------------------------------------
-    nbins = 1000;
+    nbins = 100;
     figure;
     fig = gcf;
-%     set(fig,'PaperUnits','inches','PaperPosition',[.25 .25 8 10],...
-%         'InvertHardcopy','off','Color','white','Visible','off');
+    set(fig,'PaperUnits','inches','PaperPosition',[.25 .25 10 12],...
+        'InvertHardcopy','off','Color','white','Visible','off');
     for j = 1:length(listBval)
-        [Nproc Eproc] = histcounts(snrProc(:,:,:,meanIdx == listBval(j)),...
-            nbins);
-        [Nraw Eraw] = histcounts(snrRaw(:,:,:,meanIdx == listBval(j)),...
-            nbins);
+        [Nproc Eproc] = histcounts(snrProc(:,meanIdx == listBval(j)),...
+            nbins,'Normalization','Probability');
+        [Nraw Eraw] = histcounts(snrRaw(:,meanIdx == listBval(j)),...
+            nbins,'Normalization','Probability');
         
-        %   Normalize from 0 to 1
-        Nproc = (Nproc - min(Nproc)) / (max(Nproc) - min(Nproc));
-        Nraw = (Nraw - min(Nraw)) / (max(Nraw) - min(Nraw));
+        Nproc = smooth(Nproc);
+        Nraw = smooth(Nraw);
         
         %   Compute median value of each bin
         for k = 1:nbins
@@ -356,30 +379,40 @@ for i = 1:length(subList)
         %   Plot graphs ---------------------------------------------------
         
         %   Plotting colors
-        c1 = [86,187,131]/255;   % Scatter dots
-        c2 = [78,173,241]/255;   % Fit line
-        c3 = [235,235,235]/255; % Background color
+        c1 = [86,187,131]/255;   % processed color
+        c2 = [78,173,241]/255;   % raw color
+        c3 = [235,235,235]/255;  % background color
         
-        
-        subplot(1,length(listBval),j)
+        subplot(length(listBval),1,j)
         hold on;
-        plot(Mproc,smooth(Nproc),...
-            'Color',c1,...
-            'LineWidth',2);
-        plot(Mraw,smooth(Nraw),...
-            'Color',c2,...
-            'LineWidth',2);
+        area(Mproc,Nproc,...
+            'EdgeColor',c1,'LineWidth',3,...
+            'FaceColor',c1,'FaceAlpha',0.7);
+        area(Mraw,Nraw,...
+            'EdgeColor',c2,'LineWidth',3,...
+            'FaceColor',c2,'FaceAlpha',0.7);
         hold off;
         xlabel('SNR');
-        ylabel('Scaled Voxel Count');
+        ylabel('%Voxels');
+        
+        if listBval(j) == 0
+            xlim([0 800]);
+        elseif listBval(j) == 1000
+            xlim([0 100]);
+        elseif listBval(j) == 2000
+            xlim([1 50]);
+        end
+        
         title(sprintf('B%d',listBval(j)));
-        grid on; box on;
+        grid on; box on; axis tight;
         %   Set axial colors
         ax = gca;
         set(ax,'Color',c3,...
-            'GridColor','white','GridAlpha',1,'MinorGridAlpha',0.15);
+            'GridColor','white','GridAlpha',1,'MinorGridAlpha',0.15,...
+            'fontname','helvetica','FontWeight','bold','fontsize',18);
+        clear Nproc Eproc Nraw Eraw Mproc Mraw
     end
-    print(fullfile(desOutput,'QC','SNR_Plots'),'-dpng','-r600');
+    print(fullfile(desOutput,'QC','SNR_Plots'),'-dpng','-r800');
 end
 
 %% PARFOR Progress Calculation
