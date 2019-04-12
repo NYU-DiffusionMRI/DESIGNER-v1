@@ -54,6 +54,9 @@ function [b0, dt, violMask] = dki_fit(dwi, grad, mask, constraints, outliers, ma
 % For more details, contact: Jelle.Veraart@nyumc.org
 
 
+%% Set Tolarance Levels
+minParam = 1e-8;   % Smallest acceptable diffusion and kurtosis value. Values lower than this are considered violations
+
 %% limit DKI fit to b=3000
 bval = grad(:, 4);
 order = floor(log(abs(max(bval)+1))./log(10));
@@ -161,7 +164,25 @@ dt = dt(2:22, :);
 D_apprSq = 1./(sum(dt([1 4 6],:),1)/3).^2;
 dt(7:21,:) = dt(7:21,:) .* D_apprSq(ones(15,1),:);
 b0 = vectorize(b0, mask);
-[akc, adc] = AKC(dt, grad(:,1:3));
+
+
+%% Compute Violations
+% Find unconstrained diffusion tensor
+parfor i = 1:nvoxels
+    in_ = outliers(:, i) == 0;
+    b_ = b(in_, :);
+    if isempty(b_) || cond(b(in_, :))>1e15
+        dtV(:, i) = NaN
+    else
+        wi = w(:,i); Wi = diag(wi(in_));
+        logdwii = log(dwi(in_,i));
+        dtV(:,i) = (Wi*b_)\(Wi*logdwii);
+    end
+end
+dtV = dtV(2:22, :);
+D_apprSq = 1./(sum(dtV([1 4 6],:),1)/3).^2;
+dtV(7:21,:) = dtV(7:21,:) .* D_apprSq(ones(15,1),:);
+[akc, adc] = AKC(dtV, grad(:,1:3));
 adc = adc(find(bval == largestBval),:);
 akc = akc(find(bval == largestBval),:);
 
@@ -175,13 +196,13 @@ sumViol = zeros(1,nvoxels);
 for i = 1:nvoxels
     
     % For constraint 1
-    viol.Dmin = find(adc(:,i) < 0);
+    viol.Dmin = find(adc(:,i) <= minParam);
     
     % For constraint 2
-    viol.Kmin = find(akc(:,i) < 0);
+    viol.Kmin = find(akc(:,i) <= minParam);
     
     % For constraint 3
-    viol.DKrs = find(akc(:,i) > (3 / largestBval * adc(:,i)));
+    viol.DKrs = find(akc(:,i) >= (3 / largestBval * adc(:,i)));
     
     if constraints(1) == 1 & constraints(2) == 0 & constraints(3) == 0
         % [1 0 0]
@@ -213,12 +234,6 @@ for i = 1:nvoxels
     end
 end
 
-%     if exist(viol.Dmin)
-%     % Count unique indexes of all violations
-%     sumViol(i) = numel(unique(cat(1,viol.Dmin,viol.Kmin,viol.DKrs)));
-%     end
-
-
 % A legal violation is one where there are more than 50% directional
 % violations and at least 15 directional violations. We first check for
 % proportions of violation where any voxels that has over 50% violations is
@@ -226,29 +241,23 @@ end
 % good directions, where the voxel meeting this criteria is marked for
 % replacement.
 
-% Instead of marking logical locations of violations, create a mask that
-% shows percentage violations instead
 parfor i = 1:length(sumViol)
-    violMask(i) = sumViol(i) / imgDirs;
+    Unconstrained(i) = sumViol(i) / imgDirs;
+    Directional(i) = imgDirs - sumViol(i);
 end
 
-% parfor i = 1:length(sumViol)
-%     violProp = (sumViol(i) / imgDirs) > 0;
-%     goodDirs = imgDirs - sumViol(i) > 15;
-%     if violProp | ~goodDirs
-%         violMask(i) = 1;
-%     else
-%        violMask(i) = 0;
-%     end
-% end
+violMask.Unconstrained = Unconstrained;
+violMask.Directional = Directional;
+
 
 % Reshape violation logical vector into a logical mask. Locations where a
 % voxel = 1 is where a violation occured.
 
-violMask = vectorize(violMask, mask);
-violMask(isnan(violMask)) = 0;
-% violMask = logical(violMask);
-disp(sprintf('...found %d constraint violations',nnz(violMask)));
+violMask.Unconstrained = vectorize(violMask.Unconstrained, mask);
+violMask.Directional = vectorize(violMask.Directional, mask);
+violMask.Unconstrained(isnan(violMask.Unconstrained)) = 0;
+violMask.Directional(isnan(violMask.Directional)) = imgDirs;
+% disp(sprintf('...found %d total constraint violations',nnz(violMask)));
 dt = vectorize(dt, mask);
 end
 
