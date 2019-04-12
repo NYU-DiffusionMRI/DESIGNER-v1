@@ -133,8 +133,8 @@ mkt = vectorize(mkt, mask);
 %% Median filter maps
 % First create median filtering object based on MK
 if medianfilter
-    % Specify threshold 0 for maximum aggression
-    medianFilter = createFiltObj(mk, violMask, 0.50, 3);
+    % Specify threshold 15 to filter voxel with less than 15 directions
+    medianFilter = createFiltObj(mk, violMask, 0.1, 3);
     
     % Then apply filter to all maps
     if medianFilter.FilterStatus == 1
