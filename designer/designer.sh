@@ -21,7 +21,9 @@ python designer.py \
 -rician \
 -mask \
 -prealign \
+-rpe_header -eddy \
 -smooth 1.25 \
 -fit_constraints 1,1,1 \
+-median \
 -DKIparams -DTIparams \
 ${1} ${2}
