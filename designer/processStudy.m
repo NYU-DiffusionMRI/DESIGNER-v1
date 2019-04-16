@@ -261,16 +261,6 @@ for i = 1:length(subList)
         envName,desInput,desOutput);
     [s,t] = system(runDesigner,'-echo');
     
-    %%  Rename Outputs
-    %     allFiles = dir(desOutput);
-    %     allFiles = allFiles(~startsWith({allFiles.name},'.'));
-    %     for j = 1:length(allFiles)
-    %         tmp = strsplit(allFiles(j).name,'.');
-    %         newName = [tmp{1} '_' subList{i} '.' tmp{2}];
-    %         movefile(fullfile(allFiles(j).folder,allFiles(j).name),...
-    %             fullfile(allFiles(j).folder,newName));
-    %     end
-    
     %% Create SNR Plots
     mkdir(fullfile(desOutput,'QC'));
     
@@ -294,6 +284,10 @@ for i = 1:length(subList)
     noisePath = fullfile(noisePath.folder,noisePath.name);
     Inoise = niftiread(noisePath);
     Inoise(find(isnan(Inoise))) = 0;
+    %   Noise output from MRTrix3's dwidenoise function is a noise floor,
+    %   which needs to me multiplied by the scalar sqrt(pi/2) to be
+    %   converted to noise.
+    Inoise = sqrt(pi/2)*Inoise;
     
     brainPath = dir(fullfile(desOutput,'brain_mask*'));
     brainPath = fullfile(brainPath.folder,brainPath.name);
@@ -317,23 +311,6 @@ for i = 1:length(subList)
     nB0 = find(bIdx(1,:));
     meanIdx = horzcat(repmat(listBval(1),[1 numel(nB0)]),listBval(2:end));
     
-    %   Compute means -----------------------------------------------------
-    %     for j = 1:length(listBval)
-    %         for k = 1:length(meanIdx)
-    %             if k <= length(nB0);
-    %                 snrProc(:,:,:,k) = (Iproc(:,:,:,nB0(k)) ./ Inoise) .* brainMask;
-    %                 snrRaw(:,:,:,k) = (Iraw(:,:,:,nB0(k)) ./ Inoise) .* brainMask;
-    %
-    %             elseif meanIdx(k) == listBval(j)
-    %                 snrProc(:,:,:,k) = (mean(Iproc(:,:,:,bIdx(j,:)),4)./Inoise) .* brainMask;
-    %                 snrProc(:,:,:,k) =
-    %                 snrRaw(:,:,:,k) = (mean(Iraw(:,:,:,bIdx(j,:)),4)./Inoise) .* brainMask;
-    %             else
-    %                 continue;
-    %             end
-    %         end
-    %     end
-    
     for j = 1:length(listBval)
         for k = 1:length(meanIdx)
             if k <= length(nB0);
@@ -356,23 +333,32 @@ for i = 1:length(subList)
     end
     
     %   Histogram counts --------------------------------------------------
-    nbins = 100;
-    figure;
-    fig = gcf;
+    %   Generate subplot layout such that plots are in nPlots x 2 layout.
+    %   The firsy column contains plots and the second contains a single
+    %   legend. Plot layout sets the size of subplot and plotLocations
+    %   determines where to plot them on a nPlots x 2 grid.
+    plotLayout = [numel(listBval) 3];
+    plotLocation = linspace(1,(numel(listBval)+4),numel(listBval));
+    
+    figure; fig = gcf;
+    
     set(fig,'PaperUnits','inches','PaperPosition',[.25 .25 10 12],...
         'InvertHardcopy','off','Color','white','Visible','off');
+    
     for j = 1:length(listBval)
         [Nproc Eproc] = histcounts(snrProc(:,meanIdx == listBval(j)),...
-            nbins,'Normalization','Probability');
+            'Normalization','Probability');
         [Nraw Eraw] = histcounts(snrRaw(:,meanIdx == listBval(j)),...
-            nbins,'Normalization','Probability');
+            'Normalization','Probability');
         
         Nproc = smooth(Nproc);
         Nraw = smooth(Nraw);
         
         %   Compute median value of each bin
-        for k = 1:nbins
+        for k = 1:length(Nproc)
             Mproc(k) = median([Eproc(k) Eproc(k+1)]);
+        end
+        for k = 1:length(Nraw)
             Mraw(k) = median([Eraw(k) Eraw(k+1)]);
         end
         
@@ -383,35 +369,44 @@ for i = 1:length(subList)
         c2 = [78,173,241]/255;   % raw color
         c3 = [235,235,235]/255;  % background color
         
-        subplot(length(listBval),1,j)
+        subplot(numel(listBval),3,[plotLocation(j) plotLocation(j)+1])
         hold on;
-        area(Mproc,Nproc,...
+        pArea = area(Mproc,Nproc,...
             'EdgeColor',c1,'LineWidth',3,...
-            'FaceColor',c1,'FaceAlpha',0.7);
-        area(Mraw,Nraw,...
+            'FaceColor',c1,'FaceAlpha',0.55);
+        rArea = area(Mraw,Nraw,...
             'EdgeColor',c2,'LineWidth',3,...
-            'FaceColor',c2,'FaceAlpha',0.7);
+            'FaceColor',c2,'FaceAlpha',0.55);
         hold off;
         xlabel('SNR');
         ylabel('%Voxels');
         
         if listBval(j) == 0
-            xlim([0 800]);
+            xlim([0 500]);
         elseif listBval(j) == 1000
-            xlim([0 100]);
+            xlim([0 80]);
         elseif listBval(j) == 2000
-            xlim([1 50]);
+            xlim([1 40]);
+        else
+            xlim([1 20]);
         end
         
         title(sprintf('B%d',listBval(j)));
-        grid on; box on; axis tight;
+        grid on; box on; legend off;
         %   Set axial colors
         ax = gca;
         set(ax,'Color',c3,...
             'GridColor','white','GridAlpha',1,'MinorGridAlpha',0.15,...
-            'fontname','helvetica','FontWeight','bold','fontsize',18);
+            'fontname','helvetica','FontWeight','bold','fontsize',14);
         clear Nproc Eproc Nraw Eraw Mproc Mraw
     end
+    legPlot = subplot(numel(listBval),3,numel(listBval)*3)
+    posLeg = get(legPlot,'Position');
+    leg1 = legend([pArea,rArea],...
+        {'After Preprocessing','Before Preprocessing'});
+    set(leg1,'Position',posLeg);
+    title(leg1,'Legend');
+    axis(legPlot,'off');
     print(fullfile(desOutput,'QC','SNR_Plots'),'-dpng','-r800');
 end
 
