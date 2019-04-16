@@ -257,32 +257,22 @@ for i = 1:length(subList)
     %         desInput,desOutput);
     %     runDesigner = sprintf('source activate %s && python designer.py -denoise -extent 5,5,5 -degibbs -rician -mask -prealign -eddy -rpe_header -smooth 1.25 -DKIparams -DTIparams %s %s',...
     %         envName,desInput,desOutput);
-    runDesigner = sprintf('source activate %s && python designer.py -denoise -extent 5,5,5 -degibbs -mask -rician -prealign -smooth 1.25 -DKIparams -DTIparams %s %s',...
+    runDesigner = sprintf('source activate %s && python designer.py -denoise -extent 5,5,5 -degibbs -mask -rician -prealign -rpe_header -eddy -median -smooth 1.25 -DKIparams -DTIparams %s %s',...
         envName,desInput,desOutput);
     [s,t] = system(runDesigner,'-echo');
     
-    %%  Rename Outputs
-    allFiles = dir(desOutput);
-    allFiles = allFiles(~startsWith({allFiles.name},'.'));
-    for j = 1:length(allFiles)
-        tmp = strsplit(allFiles(j).name,'.');
-        newName = [tmp{1} '_' subList{i} '.' tmp{2}];
-        movefile(fullfile(allFiles(j).folder,allFiles(j).name),...
-            fullfile(allFiles(j).folder,newName));
-    end
-    
-    %% Create QC Metrics
+    %% Create SNR Plots
     mkdir(fullfile(desOutput,'QC'));
     
     %   Load all files
     bvalPath = dir(fullfile(desOutput,'*bval'));
     bvalPath = fullfile(bvalPath.folder,bvalPath.name);
-    bval = round(single(load(bvalPath)));
+    bval = round(load(bvalPath));
     
-%     bvecPath = dir(fullfile(desOutput,'*bvec'));
-%     bvecPath = fullfile(bvecPath.folder,bvecPath.name);
+    %     bvecPath = dir(fullfile(desOutput,'*bvec'));
+    %     bvecPath = fullfile(bvecPath.folder,bvecPath.name);
     
-    procPath = dir(fullfile(desOutput,['dwi_designer_' subList{i} '.nii']));
+    procPath = dir(fullfile(desOutput,'dwi_designer.nii'));
     procPath = fullfile(procPath.folder,procPath.name);
     Iproc = niftiread(procPath);
     
@@ -293,14 +283,21 @@ for i = 1:length(subList)
     noisePath = dir(fullfile(desOutput,'fullnoisemap*'));
     noisePath = fullfile(noisePath.folder,noisePath.name);
     Inoise = niftiread(noisePath);
+    Inoise(find(isnan(Inoise))) = 0;
+    %   Noise output from MRTrix3's dwidenoise function is a noise floor,
+    %   which needs to me multiplied by the scalar sqrt(pi/2) to be
+    %   converted to noise.
+    Inoise = sqrt(pi/2)*Inoise;
     
     brainPath = dir(fullfile(desOutput,'brain_mask*'));
     brainPath = fullfile(brainPath.folder,brainPath.name);
     brainMask = logical(niftiread(brainPath));
     
-%     csfPath = dir(fullfile(desOutput,'CSFmask*'));
-%     csfPath = fullfile(csfPath.folder,csfPath.name);
-%     csfMask = logical(niftiread(csfPath));
+    %     csfPath = dir(fullfile(desOutput,'CSFmask*'));
+    %     csfPath = fullfile(csfPath.folder,csfPath.name);
+    %     csfMask = ~logical(niftiread(csfPath));
+    %
+    %     histoMask = logical(brainMask .* csfMask);
     
     %   Create logical indexes of bvalues
     listBval = unique(bval);
@@ -314,65 +311,103 @@ for i = 1:length(subList)
     nB0 = find(bIdx(1,:));
     meanIdx = horzcat(repmat(listBval(1),[1 numel(nB0)]),listBval(2:end));
     
-    %   Compute mean array by initializing it first
-    
-    meanProc = Iproc(:,:,:,nB0) ./ Inoise;
-    meanRaw = Iraw(:,:,:,nB0) ./ Inoise;
-    
     for j = 1:length(listBval)
-        if j == 1;
-            %   Skip B0 because already concatenated
-            continue;
-        else
-            meanProc(:,:,:,end+j) = mean(Iproc(:,:,:,bIdx(j,:)),4)./Inoise;
-            meanRaw(:,:,:,end+j) = mean(Iraw(:,:,:,bIdx(j,:)),4)./Inoise;
+        for k = 1:length(meanIdx)
+            if k <= length(nB0);
+                tmpProc = Iproc(:,:,:,nB0(k));
+                snrProc(:,k) = tmpProc(brainMask);
+                
+                tmpRaw = Iraw(:,:,:,nB0(k)) ./ Inoise;
+                snrRaw(:,k) = tmpRaw(brainMask);
+                
+            elseif meanIdx(k) == listBval(j)
+                tmpProc = mean(Iproc(:,:,:,bIdx(j,:)),4)./Inoise;
+                snrProc(:,k) = tmpProc(brainMask);
+                
+                tmpRaw = mean(Iraw(:,:,:,bIdx(j,:)),4)./Inoise;
+                snrRaw(:,k) = tmpRaw(brainMask);
+            else
+                continue;
+            end
         end
     end
     
-    %   Calculate Log
-    meanProc = 10*log10(meanProc);
-    meanRaw = 10*log10(meanRaw);
+    %   Histogram counts --------------------------------------------------
+    %   Generate subplot layout such that plots are in nPlots x 2 layout.
+    %   The firsy column contains plots and the second contains a single
+    %   legend. Plot layout sets the size of subplot and plotLocations
+    %   determines where to plot them on a nPlots x 2 grid.
+    plotLayout = [numel(listBval) 3];
+    plotLocation = linspace(1,(numel(listBval)+4),numel(listBval));
     
-    %   Create plots
-    nbins = 100;
-    figure;
+    figure; fig = gcf;
+    
+    set(fig,'PaperUnits','inches','PaperPosition',[.25 .25 10 12],...
+        'InvertHardcopy','off','Color','white','Visible','off');
+    
     for j = 1:length(listBval)
-        [Nproc Eproc] = histcounts(meanProc(:,:,:,meanIdx == listBval(j)),...
-            nbins,'Normalization','Probability');
-        [Nraw Eraw] = histcounts(meanRaw(:,:,:,meanIdx == listBval(j)),...
-            nbins,'Normalization','Probability');
-        IQRproc = iqr(meanProc(:,:,:,meanIdx == listBval(j)),'all');
-        IQRraw = iqr(meanRaw(:,:,:,meanIdx == listBval(j)),'all');
-        for k = 1:nbins
+        [Nproc Eproc] = histcounts(snrProc(:,meanIdx == listBval(j)),...
+            'Normalization','Probability');
+        [Nraw Eraw] = histcounts(snrRaw(:,meanIdx == listBval(j)),...
+            'Normalization','Probability');
+        
+        Nproc = smooth(Nproc);
+        Nraw = smooth(Nraw);
+        
+        %   Compute median value of each bin
+        for k = 1:length(Nproc)
             Mproc(k) = median([Eproc(k) Eproc(k+1)]);
+        end
+        for k = 1:length(Nraw)
             Mraw(k) = median([Eraw(k) Eraw(k+1)]);
         end
-        subplot(1,length(listBval),j)
+        
+        %   Plot graphs ---------------------------------------------------
+        
+        %   Plotting colors
+        c1 = [86,187,131]/255;   % processed color
+        c2 = [78,173,241]/255;   % raw color
+        c3 = [235,235,235]/255;  % background color
+        
+        subplot(numel(listBval),3,[plotLocation(j) plotLocation(j)+1])
         hold on;
-        plot(Mproc,Nproc)
-        plot(Mraw,Nraw);
+        pArea = area(Mproc,Nproc,...
+            'EdgeColor',c1,'LineWidth',3,...
+            'FaceColor',c1,'FaceAlpha',0.55);
+        rArea = area(Mraw,Nraw,...
+            'EdgeColor',c2,'LineWidth',3,...
+            'FaceColor',c2,'FaceAlpha',0.55);
         hold off;
         xlabel('SNR');
-        ylabel('Normalized Voxel Count');
-        legend('SNR: Designer Output','SNR: Designer Input');
+        ylabel('%Voxels');
+        
+        if listBval(j) == 0
+            xlim([0 500]);
+        elseif listBval(j) == 1000
+            xlim([0 80]);
+        elseif listBval(j) == 2000
+            xlim([1 40]);
+        else
+            xlim([1 20]);
+        end
+        
         title(sprintf('B%d',listBval(j)));
-        grid on; box on;
+        grid on; box on; legend off;
+        %   Set axial colors
+        ax = gca;
+        set(ax,'Color',c3,...
+            'GridColor','white','GridAlpha',1,'MinorGridAlpha',0.15,...
+            'fontname','helvetica','FontWeight','bold','fontsize',14);
+        clear Nproc Eproc Nraw Eraw Mproc Mraw
     end
-    
-    
-    %----------------------------------------------------------------------
-    %   Testing Phase
-    %----------------------------------------------------------------------
-    meanProc = zeros(size(Iproc,1),size(Iproc,2),size(Iproc,3),length(meanIdx));
-    for j = 1:length(listBval)
-        meanProc(:,:,:,meanIdx == listBval(j)) = Iproc(:,:,:,
-    
-    
-    
-    
-    
-    
-    
+    legPlot = subplot(numel(listBval),3,numel(listBval)*3)
+    posLeg = get(legPlot,'Position');
+    leg1 = legend([pArea,rArea],...
+        {'After Preprocessing','Before Preprocessing'});
+    set(leg1,'Position',posLeg);
+    title(leg1,'Legend');
+    axis(legPlot,'off');
+    print(fullfile(desOutput,'QC','SNR_Plots'),'-dpng','-r800');
 end
 
 %% PARFOR Progress Calculation
