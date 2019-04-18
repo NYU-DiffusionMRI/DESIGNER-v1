@@ -295,11 +295,7 @@ for i = 1:length(subList)
     noisePath = fullfile(noisePath.folder,noisePath.name);
     Inoise = niftiread(noisePath);
     Inoise(find(isnan(Inoise))) = 0;
-    %   Noise output from MRTrix3's dwidenoise function is a noise floor,
-    %   which needs to me multiplied by the scalar sqrt(pi/2) to be
-    %   converted to noise.
-    Inoise = Inoise;
-    
+
     brainPath = dir(fullfile(desOutput,'brain_mask*'));
     brainPath = fullfile(brainPath.folder,brainPath.name);
     brainMask = logical(niftiread(brainPath));
@@ -325,7 +321,7 @@ for i = 1:length(subList)
     for j = 1:length(listBval)
         for k = 1:length(meanIdx)
             if k <= length(nB0);
-                tmpProc = Iproc(:,:,:,nB0(k));
+                tmpProc = Iproc(:,:,:,nB0(k)) ./ Inoise;
                 snrProc(:,k) = tmpProc(brainMask);
                 
                 tmpRaw = Iraw(:,:,:,nB0(k)) ./ Inoise;
@@ -392,7 +388,7 @@ for i = 1:length(subList)
         xlabel('SNR');
         ylabel('%Voxels');
         
-        if listBval(j) == 0
+        if listBval(j) == 0 
             xlim([0 500]);
         elseif listBval(j) == 1000
             xlim([0 80]);
