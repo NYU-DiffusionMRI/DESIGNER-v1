@@ -1,4 +1,4 @@
-function processStudy(studyPath);
+function processStudy(varargin);
 %   processStudy is a MATLAB function designed to provide "hands-off"
 %   preprocesxing to diffusion MRI images.
 %
@@ -8,8 +8,19 @@ function processStudy(studyPath);
 %   Author: Siddhartha Dhiman
 %   Date Created: 02/14/2019
 %   Matlab 2018b
-
 warning off;
+
+%% Input Parsing
+%   Set default values
+defaultTBSS = 'off';
+
+%   Initialize input parser
+p = inputParser;
+addOptional(p,'studyPath');
+addParameter(p,'tbss',defaultTBSS);
+
+%   Parse input
+parse(p,width,varargin{:});
 %% Conda Variables
 envName = 'py36';
 
@@ -287,7 +298,7 @@ for i = 1:length(subList)
     %   Noise output from MRTrix3's dwidenoise function is a noise floor,
     %   which needs to me multiplied by the scalar sqrt(pi/2) to be
     %   converted to noise.
-    Inoise = sqrt(pi/2)*Inoise;
+    Inoise = Inoise;
     
     brainPath = dir(fullfile(desOutput,'brain_mask*'));
     brainPath = fullfile(brainPath.folder,brainPath.name);
@@ -408,6 +419,7 @@ for i = 1:length(subList)
     title(leg1,'Legend');
     axis(legPlot,'off');
     print(fullfile(desOutput,'QC','SNR_Plots'),'-dpng','-r800');
+    clear tmpRaw tmpProc snrProc snrRaw
 end
 
 %% PARFOR Progress Calculation
