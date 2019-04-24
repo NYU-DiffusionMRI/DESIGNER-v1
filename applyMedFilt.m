@@ -27,7 +27,7 @@ function V = applyMedFilt(Im, filtObject)
 % six faces of violating voxel and 'all' picks all voxels surrounding the
 % violating voxels.
 
-connectivity = 'face';
+connectivity = 'all';
 %% Perform Checks
 % Check for image and violation map size
 if prod(size(Im)) ~= prod(size(filtObject.Mask))

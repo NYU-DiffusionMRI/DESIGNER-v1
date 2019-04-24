@@ -352,7 +352,7 @@ if ~exist(fullfile(outdir,'QC'))
 else
     ;
 end
-nii.img = violMask.Unconstrained; nii.hdr.dime.glmax = max(b0(:)); save_untouch_nii(nii,fullfile(outdir,'QC','Propotional_Violations.nii'));
+nii.img = violMask.Proportional; nii.hdr.dime.glmax = max(b0(:)); save_untouch_nii(nii,fullfile(outdir,'QC','Propotional_Violations.nii'));
 nii.img = violMask.Directional; nii.hdr.dime.glmax = max(b0(:)); save_untouch_nii(nii,fullfile(outdir,'QC','Good_Directions.nii'));
 end
 

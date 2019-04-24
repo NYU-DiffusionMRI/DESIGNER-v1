@@ -66,7 +66,7 @@ end
 % six faces of violating voxel and 'all' picks all voxels surrounding the
 % violating voxels.
 
-connectivity = 'face';
+connectivity = 'all';
 %% Create Filter
 % Distance from centroid to edges of 3D box filter
 filtObject.Size = sz;
