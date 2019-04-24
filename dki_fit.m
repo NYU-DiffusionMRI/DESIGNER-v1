@@ -242,20 +242,20 @@ end
 % replacement.
 
 parfor i = 1:length(sumViol)
-    Unconstrained(i) = sumViol(i) / imgDirs;
+    Proportional(i) = sumViol(i) / imgDirs;
     Directional(i) = imgDirs - sumViol(i);
 end
 
-violMask.Unconstrained = Unconstrained;
+violMask.Proportional = Proportional;
 violMask.Directional = Directional;
 
 
 % Reshape violation logical vector into a logical mask. Locations where a
 % voxel = 1 is where a violation occured.
 
-violMask.Unconstrained = vectorize(violMask.Unconstrained, mask);
+violMask.Proportional = vectorize(violMask.Proportional, mask);
 violMask.Directional = vectorize(violMask.Directional, mask);
-violMask.Unconstrained(isnan(violMask.Unconstrained)) = 0;
+violMask.Proportional(isnan(violMask.Proportional)) = 0;
 violMask.Directional(isnan(violMask.Directional)) = imgDirs;
 % disp(sprintf('...found %d total constraint violations',nnz(violMask)));
 dt = vectorize(dt, mask);

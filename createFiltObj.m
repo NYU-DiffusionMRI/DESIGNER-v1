@@ -53,7 +53,7 @@ function filtObject = createFiltObj(Im, violMask, th, sz)
 %   =======================================================================
 
 %% Perform Checks
-if prod(size(Im)) ~= prod(size(violMask.Unconstrained))
+if prod(size(Im)) ~= prod(size(violMask.Proportional))
     error('Violation mask and parameter map sizes are not equal');
     % Ensure filter box matrix is odd-sized
 elseif mod(sz,2) == 0
@@ -66,14 +66,14 @@ end
 % Distance from centroid to edges of 3D box filter
 filtObject.Size = sz;
 
-filtObject.PropMask = violMask.Unconstrained;
+filtObject.PropMask = violMask.Proportional;
 filtObject.DirMask = violMask.Directional;
 
 filtObject.Threshold = th;
 if th == 0;
     error('Threshold cannot be zero. Please disable median filtering flag');
 elseif th > 0 & th <= 1
-    filtObject.Mask = violMask.Unconstrained;
+    filtObject.Mask = violMask.Proportional;
     filtObject.FilterType = 'Proportional Violations';
     filtObject.Mask(filtObject.Mask >= th) = 1;
     filtObject.Mask(filtObject.Mask < th) = 0;
@@ -139,6 +139,8 @@ if numel(violIdx) > 0
             if nViol == sz^3;
                 % If every voxel in patch is a violation, replace nothing
                 filtObject.PatchIdx(i) = NaN;
+                disp(sprintf('Violation at voxel [%d,%d,%d] surrounded by violations...skipping',...
+                I,J,K));
                 continue;
             else
                 % Sort all patch values into ascending order and remove NaNs
@@ -193,7 +195,7 @@ if numel(violIdx) > 0
             % median filter will fail. This portion will catch such voxels and
             % label the MedianIdx as NaN to specify no median exists. Because
             % the voxel is very close to the edge, a median
-            disp(sprintf('Violation voxel [%d,%d,%d] occurs at image edge...skipping',...
+            disp(sprintf('Violation at voxel [%d,%d,%d] surrounded by NaNs...skipping',...
                 I,J,K));
             filtObject.CorrectedVal(i) = NaN;
             filtObject.MedianIdx(i) = NaN;

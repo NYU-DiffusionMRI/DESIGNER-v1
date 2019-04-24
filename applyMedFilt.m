@@ -59,7 +59,6 @@ if filtObject.FilterStatus == 1
         % nothing and jump to next violation.
         
         if ~isnan(filtObject.PatchIdx(i))
-%             [I, J, K] = ind2sub([Ix,Iy,Iz],violIdx(i));
             
             % Index beginning and ending of median filter (box) matrix
             Ib = filtObject.X(i) - d2move;
