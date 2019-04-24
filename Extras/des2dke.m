@@ -66,10 +66,12 @@ fprintf('B:...writing BVAL\n');
 dlmwrite(bval_Path,bval,',');
 fprintf('C:...writing BVAL\n');
 dlmwrite(bvec_Path,bvec,',');
+b1_idx_new = find(bval == 1000); %indices have changed, update
+
 
 [p,~,~] = fileparts(bvec_Path);
 Gradient1 = bvec';
-Gradient1 = Gradient1(b1_idx,:);
+Gradient1 = Gradient1(b1_idx_new,:);
 fprintf('\tD:...writing gradient\n');
 save(fullfile(p,'gradient_dke.txt'),'Gradient1','-ASCII');
 
@@ -83,12 +85,10 @@ fidout=fopen(fout,'w');
 while(~feof(fid))
     s=fgetl(fid);
     s=strrep(s,'dir-sub-changeme',dke_Path); %s=strrep(s,'A201', subject_list{i}) replace subject
-    s=strrep(s,'ndir = changeme',sprintf('ndir = %d',length(b1_idx)));
+    s=strrep(s,'ndir = changeme',sprintf('ndir = %d',length(b1_idx_new)));
     s=strrep(s,'fn-gradients-changeme',fullfile(dke_Path,'gradient_dke.txt'));
     fprintf(fidout,'%s\n',s);
 end
 fclose(fid);
 fclose(fidout);
 fprintf('.....Completed.....\n');
-
-
