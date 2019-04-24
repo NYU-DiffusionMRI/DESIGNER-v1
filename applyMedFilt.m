@@ -23,8 +23,11 @@ function V = applyMedFilt(Im, filtObject)
 %   Created with MATLAB 2018b
 %   =======================================================================
 
-Im = double(Im);
+% Determine level of connectivity. 'face' only picks voxels touching the
+% six faces of violating voxel and 'all' picks all voxels surrounding the
+% violating voxels.
 
+connectivity = 'face';
 %% Perform Checks
 % Check for image and violation map size
 if prod(size(Im)) ~= prod(size(filtObject.Mask))
@@ -40,6 +43,7 @@ end
 % Apply a nan-padding to all 3 dimensions of image and nan padding to mask; 
 % same size as the distance between centroid of patch to edge. This enables
 % median filtering of edges.
+Im = double(Im);
 centralIdx = median(1:filtObject.Size);
 d2move = abs(filtObject.Size - centralIdx);
 Im = padarray(Im,[d2move d2move d2move],nan,'both');
@@ -61,20 +65,29 @@ if filtObject.FilterStatus == 1
         if ~isnan(filtObject.PatchIdx(i))
             
             % Index beginning and ending of median filter (box) matrix
-            Ib = filtObject.X(i) - d2move;
-            Ie = filtObject.X(i) + d2move;
+            I = filtObject.X(i);
+            J = filtObject.Y(i);
+            K = filtObject.Z(i);
             
-            Jb = filtObject.Y(i) - d2move;
-            Je = filtObject.Y(i) + d2move;
+            Ib = I - d2move;
+            Ie = I + d2move;
             
-            Kb = filtObject.Z(i) - d2move;
-            Ke = filtObject.Z(i) + d2move;
+            Jb = J - d2move;
+            Je = J + d2move;
+            
+            Kb = K - d2move;
+            Ke = K + d2move;
             
 %             patchViol = filtObject.Mask(Ib:Ie, Jb:Je, Kb:Ke);
-            patchI = Im(Ib:Ie, Jb:Je, Kb:Ke);
+            if strcmp(connectivity,'all');
+                patchI = Im(Ib:Ie, Jb:Je, Kb:Ke);
+            elseif strcmp(connectivity,'face');
+                patchI = reshape(Im([Ib,Ie],J,K),[],1);
+                patchI = vertcat(patchI,reshape(Im(I,[Jb,Je],K),[],1));
+                patchI = vertcat(patchI,reshape(Im(I,J,[Kb,Ke]),[],1));
+            end
             
-            V(filtObject.X(i),filtObject.Y(i),filtObject.Z(i)) = ...
-                patchI(filtObject.PatchIdx(i));
+            V(I,J,K) = patchI(filtObject.PatchIdx(i));
             
         else
             continue;

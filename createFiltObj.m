@@ -62,6 +62,11 @@ else
     disp('...applying median filter (1/2)');
 end
 
+% Determine level of connectivity. 'face' only picks voxels touching the
+% six faces of violating voxel and 'all' picks all voxels surrounding the
+% violating voxels.
+
+connectivity = 'face';
 %% Create Filter
 % Distance from centroid to edges of 3D box filter
 filtObject.Size = sz;
@@ -95,7 +100,7 @@ centralIdx = median(1:sz);
 d2move = abs(sz - centralIdx);
 
 %% Pad Image and Mask
-% Apply a nan-padding to all 3 dimensions of image and nan padding to mask; 
+% Apply a nan-padding to all 3 dimensions of image and nan padding to mask;
 % same size as the distance between centroid of patch to edge. This enables
 % median filtering of edges.
 Im = padarray(Im,[d2move d2move d2move],nan,'both');
@@ -129,18 +134,29 @@ if numel(violIdx) > 0
         % from violation pixels too close to edge.
         try
             % Get reference image and violation mask patches
-            patchViol = violMask(Ib:Ie, Jb:Je, Kb:Ke);
-            patchI = Im(Ib:Ie, Jb:Je, Kb:Ke);
+            if strcmp(connectivity,'all');
+                patchViol = violMask(Ib:Ie, Jb:Je, Kb:Ke);
+                patchI = Im(Ib:Ie, Jb:Je, Kb:Ke);
+                connectivityLimit = 26;
+            elseif strcmp(connectivity,'face');
+                patchViol = reshape(violMask([Ib,Ie],J,K),[],1);
+                patchViol = vertcat(patchViol,reshape(violMask(I,[Jb,Je],K),[],1));
+                patchViol = vertcat(patchViol,reshape(violMask(I,J,[Kb,Ke]),[],1));
+                patchI = reshape(Im([Ib,Ie],J,K),[],1);
+                patchI = vertcat(patchI,reshape(Im(I,[Jb,Je],K),[],1));
+                patchI = vertcat(patchI,reshape(Im(I,J,[Kb,Ke]),[],1));
+                connectivityLimit = 6;
+            end
             nViol = numel(find(patchViol));
             
             % Here a check is performed to compute the number of violations in a
             % patch. If all voxels are violations, do nothing. Otherwise, exclude
             % violation voxels from the median calculation
-            if nViol == sz^3;
+            if nViol == connectivityLimit;
                 % If every voxel in patch is a violation, replace nothing
                 filtObject.PatchIdx(i) = NaN;
-                disp(sprintf('Violation at voxel [%d,%d,%d] surrounded by violations...skipping',...
-                I,J,K));
+                warning(sprintf('Violation at voxel [%d,%d,%d] surrounded by violations...skipping',...
+                    I,J,K));
                 continue;
             else
                 % Sort all patch values into ascending order and remove NaNs
@@ -195,7 +211,7 @@ if numel(violIdx) > 0
             % median filter will fail. This portion will catch such voxels and
             % label the MedianIdx as NaN to specify no median exists. Because
             % the voxel is very close to the edge, a median
-            disp(sprintf('Violation at voxel [%d,%d,%d] surrounded by NaNs...skipping',...
+            warning(sprintf('Violation at voxel [%d,%d,%d] surrounded by NaNs...skipping',...
                 I,J,K));
             filtObject.CorrectedVal(i) = NaN;
             filtObject.MedianIdx(i) = NaN;
