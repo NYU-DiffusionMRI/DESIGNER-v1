@@ -1,12 +1,18 @@
 function des2dke(inDir)
 % DES2DKE  Convert designer output to DKE inputs
-%   ADDME('input directory') creates a folder called 'DKE' within
-%   Designer's output folder and prepares all files for DKE.
+%   DES2DKE('input directory') creates a folder called 'DKE' within
+%   Designer's output folder and prepares all files for DKE. It modifies
+%   DWIs, BVALs and BVECs to ensure compatibility with DKE.
+%
+%   All B0s in DWIs in removed and Designer's B0 is inserted into the first
+%   index. This change is also applied to BVAL and BVEC so they reflect
+%   changes made to DWI.
 %
 %   Author: Siddhartha Dhiman
 %   Email:  dhiman@musc.edu
 
 %% Load Paths
+b0_Path = fullfile(inDir,'b0.nii');
 dwi_Path = fullfile(inDir,'dwi_designer.nii');
 bval_Path = fullfile(inDir,'dwi_designer.bval');
 bvec_Path = fullfile(inDir,'dwi_designer.bvec');
@@ -20,6 +26,11 @@ fprintf('1: Reading Files\n');
 hdr = niftiinfo(dwi_Path);
 dwi = niftiread(hdr);
 fprintf('\tA:...loaded image\n');
+
+hdr_b0 = niftiinfo(b0_Path);
+b0 = niftiread(hdr_b0);
+fprintf('\tA:...loaded B0\n');
+
 brainmask = logical(niftiread(mask_Path));
 fprintf('\tB:...loaded brainmask\n');
 
@@ -35,33 +46,32 @@ b0_idx = find(bval == 0);
 b1_idx = find(bval == 1000);
 b2_idx = find(bval == 2000);
 
-%% Average B0s
-fprintf('2: Computing B0 Means\n');
-b0_mean = dwi(b0_idx(1));
-for i = 2:length(b0_idx)
-    b0_mean = b0_mean + dwi(:,:,:,b0_idx(i));
-end
-b0_mean = b0_mean / length(b0_idx);
+%% Remove B0s from all files
+dwi(:,:,:,b0_idx) = [];
+bval(b0_idx) = [];
+bvec(:,b0_idx(2:end)) = [];
 
-%% Replace Mean and Modify BVAL/BVEC
+%% Concatenate with Designer B0
+dwi = cat(4,b0,dwi);
+b0_val = 0;
+bval = cat(2,b0_val,bval);
+
+%% Modify BVAL/BVEC
 % Update path variables
 dwi_Path = fullfile(dke_Path,'dke.nii');
 bval_Path = fullfile(dke_Path,'dke.bval');
 bvec_Path = fullfile(dke_Path,'dke.bvec');
 
 fprintf('3: Writing Files\n');
-dwi(:,:,:,1) = b0_mean;
-
-dwi(:,:,:,b0_idx(2:end)) = [];
 for i = 1:size(dwi,4)
     dwi(:,:,:,i) = dwi(:,:,:,i) .* brainmask;
 end
+dwi(find(isnan(dwi))) = 0;      %remove nan
 hdr.ImageSize = size(dwi);
 fprintf('\tA:...writing image\n');
 niftiwrite(dwi,dwi_Path,hdr);
 
-bval(b0_idx(2:end)) = [];
-bvec(:,b0_idx(2:end)) = [];
+
 fprintf('B:...writing BVAL\n');
 dlmwrite(bval_Path,bval,',');
 fprintf('C:...writing BVAL\n');
