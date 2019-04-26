@@ -529,9 +529,6 @@ if app.args.DTIparams or app.args.DKIparams or app.args.WMTIparams:
     shutil.copyfile(path.toTemp('dwi_designer.bval', True),
                     path.fromUser(app.args.output + '/dwi_designer.bval'
                     , True))
-    shutil.copyfile(path.toTemp('dwi_designer.json', True),
-                    path.fromUser(app.args.output + '/dwi_designer.json'
-                    , True))
     shutil.copyfile(path.toTemp('fullnoisemap.nii', True),
                     path.fromUser(app.args.output + '/fullnoisemap.nii'
                     , True))
