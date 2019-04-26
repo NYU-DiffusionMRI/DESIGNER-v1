@@ -453,7 +453,7 @@ if app.args.smooth:
     run.function(os.remove, 'working.mif')
     call('mrconvert -force dwism.mif working.mif',shell=True)
 
-call('mrinfo json_all dwi_designer.json -export_grad_fsl dwi_designer.bvec dwi_designer.bval working.mif',shell=True
+call('mrinfo -export_grad_fsl dwi_designer.bvec dwi_designer.bval working.mif',shell=True
             )
 
 # rician bias correction
@@ -513,6 +513,8 @@ if app.args.normalise:
     call('mrconvert -force dwinm.mif working.mif',shell=True)
 
 call('mrconvert -force -datatype float32le working.mif dwi_designer.nii',shell=True
+            )
+call('mrinfo -json_all -dwi_designer.json working.mif',shell=True
             )
 run.function(os.remove, 'working.mif')
 
