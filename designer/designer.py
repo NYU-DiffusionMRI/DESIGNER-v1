@@ -453,7 +453,7 @@ if app.args.smooth:
     run.function(os.remove, 'working.mif')
     call('mrconvert -force dwism.mif working.mif',shell=True)
 
-call('mrinfo -export_grad_fsl dwi_designer.bvec dwi_designer.bval working.mif',shell=True
+call('mrinfo json_all dwi_designer.json -export_grad_fsl dwi_designer.bvec dwi_designer.bval working.mif',shell=True
             )
 
 # rician bias correction
@@ -528,6 +528,9 @@ if app.args.DTIparams or app.args.DKIparams or app.args.WMTIparams:
     shutil.copyfile(path.toTemp('dwi_designer.bval', True),
                     path.fromUser(app.args.output + '/dwi_designer.bval'
                     , True))
+    shutil.copyfile(path.toTemp('dwi_designer.json', True),
+                    path.fromUser(app.args.output + '/dwi_designer.json'
+                    , True))
     shutil.copyfile(path.toTemp('fullnoisemap.nii', True),
                     path.fromUser(app.args.output + '/fullnoisemap.nii'
                     , True))
@@ -539,7 +542,7 @@ if app.args.DTIparams or app.args.DKIparams or app.args.WMTIparams:
                     , True))
     shutil.copyfile(path.toTemp('brain_mask.nii', True),
                     path.fromUser(app.args.output + '/brain_mask.nii'
-                    , True))                                                
+                    , True))
 
     print('...Beginning tensor estimation')
     os.chdir(designer_root)
