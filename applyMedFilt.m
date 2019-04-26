@@ -23,11 +23,6 @@ function V = applyMedFilt(Im, filtObject)
 %   Created with MATLAB 2018b
 %   =======================================================================
 
-% Determine level of connectivity. 'face' only picks voxels touching the
-% six faces of violating voxel and 'all' picks all voxels surrounding the
-% violating voxels.
-
-connectivity = 'face';
 %% Perform Checks
 % Check for image and violation map size
 if prod(size(Im)) ~= prod(size(filtObject.Mask))
@@ -79,9 +74,9 @@ if filtObject.FilterStatus == 1
             Ke = K + d2move;
             
 %             patchViol = filtObject.Mask(Ib:Ie, Jb:Je, Kb:Ke);
-            if strcmp(connectivity,'all');
+            if strcmp(filtObject.Connectivity,'all');
                 patchI = Im(Ib:Ie, Jb:Je, Kb:Ke);
-            elseif strcmp(connectivity,'face');
+            elseif strcmp(filtObject.Connectivity,'face');
                 patchI = reshape(Im([Ib,Ie],J,K),[],1);
                 patchI = vertcat(patchI,reshape(Im(I,[Jb,Je],K),[],1));
                 patchI = vertcat(patchI,reshape(Im(I,J,[Kb,Ke]),[],1));

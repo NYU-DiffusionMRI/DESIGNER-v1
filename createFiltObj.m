@@ -62,11 +62,12 @@ else
     disp('...applying median filter (1/2)');
 end
 
+%% Define Fixed Parameters
 % Determine level of connectivity. 'face' only picks voxels touching the
 % six faces of violating voxel and 'all' picks all voxels surrounding the
 % violating voxels.
 
-connectivity = 'face';
+filtObject.Connectivity = 'face';
 %% Create Filter
 % Distance from centroid to edges of 3D box filter
 filtObject.Size = sz;
@@ -133,12 +134,13 @@ if numel(violIdx) > 0
         % Place algorithm in a try-catch loop to prevent out-of-index issues
         % from violation pixels too close to edge.
         try
-            % Get reference image and violation mask patches
-            if strcmp(connectivity,'all');
+            % Get reference image and violation mask patches based on
+            % connectivity
+            if strcmp(filtObject.Connectivity,'all');
                 patchViol = violMask(Ib:Ie, Jb:Je, Kb:Ke);
                 patchI = Im(Ib:Ie, Jb:Je, Kb:Ke);
                 connectivityLimit = 26;
-            elseif strcmp(connectivity,'face');
+            elseif strcmp(filtObject.Connectivity,'face');
                 patchViol = reshape(violMask([Ib,Ie],J,K),[],1);
                 patchViol = vertcat(patchViol,reshape(violMask(I,[Jb,Je],K),[],1));
                 patchViol = vertcat(patchViol,reshape(violMask(I,J,[Kb,Ke]),[],1));
