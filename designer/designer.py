@@ -453,9 +453,6 @@ if app.args.smooth:
     run.function(os.remove, 'working.mif')
     call('mrconvert -force dwism.mif working.mif',shell=True)
 
-call('mrinfo -export_grad_fsl dwi_designer.bvec dwi_designer.bval working.mif',shell=True
-            )
-
 # rician bias correction
 
 if app.args.rician and app.args.rician_lowsnr:
@@ -514,6 +511,10 @@ if app.args.normalise:
 
 call('mrconvert -force -datatype float32le working.mif dwi_designer.nii',shell=True
             )
+
+#  extract important parameters from working.mif
+call('mrinfo -export_grad_fsl dwi_designer.bvec dwi_designer.bval working.mif',shell=True
+            )
 run.function(os.remove, 'working.mif')
 
 if app.args.DTIparams or app.args.DKIparams or app.args.WMTIparams:
@@ -539,7 +540,7 @@ if app.args.DTIparams or app.args.DKIparams or app.args.WMTIparams:
                     , True))
     shutil.copyfile(path.toTemp('brain_mask.nii', True),
                     path.fromUser(app.args.output + '/brain_mask.nii'
-                    , True))                                                
+                    , True))
 
     print('...Beginning tensor estimation')
     os.chdir(designer_root)

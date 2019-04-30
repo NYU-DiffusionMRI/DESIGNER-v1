@@ -10,24 +10,28 @@ function [fa, md, rd, ad, fe, mk, rk, ak, kfa, mkt] = dki_parameters(dt, mask, v
 %
 % Usage:
 % ------
-% [fa, md, ad, rd, fe, mk, ak, rk] = dki_parameters(dt [, mask [, branch]])
+% [fa, md, ad, rd, fe, mk, ak, rk] = dki_parameters(dt [, mask [, branch]], medianfiltering)
 %
 % Required input:
 % ---------------
 %     1. dt: diffusion kurtosis tensor (cf. order of tensor elements cf. dki_fit.m)
 %           [x, y, z, 21]
 %
+%     2. medianilter, 0 or 1
+%              0: no median filtering
+%              1: apply median filtering
+%
 % Optional input:
 % ---------------
-%    2. mask (boolean; [x, y, x]), providing a mask limits the
+%    3. mask (boolean; [x, y, x]), providing a mask limits the
 %       calculation to a user-defined region-of-interest.
 %       default: mask = full FOV
 %
-%    3. branch selection, 1 or 2 (default: 1)
+%    4. branch selection, 1 or 2 (default: 1)
 %              1. De_parallel > Da_parallel
 %              2. Da_parallel > De_parallel
 %
-% output:
+% Output:
 % -------
 %  1. fa:                fractional anisitropy
 %  2. md:                mean diffusivity
@@ -133,8 +137,9 @@ mkt = vectorize(mkt, mask);
 %% Median filter maps
 % First create median filtering object based on MK
 if medianfilter
-    % Specify threshold 0 for maximum aggression
-    medianFilter = createFiltObj(mk, violMask, 0, 3);
+    % Specify threshold at 10% to filter voxels with more than 10%
+    % violations
+    medianFilter = createFiltObj(mk, violMask, 0.1, 3);
     
     % Then apply filter to all maps
     if medianFilter.FilterStatus == 1
@@ -143,12 +148,12 @@ if medianfilter
         ad = applyMedFilt(ad, medianFilter);
         rd = applyMedFilt(rd, medianFilter);
         mk = applyMedFilt(mk, medianFilter);
-        ad = applyMedFilt(ad, medianFilter);
+        ak = applyMedFilt(ak, medianFilter);
         rk = applyMedFilt(rk, medianFilter);
         kfa = applyMedFilt(kfa, medianFilter);
         mkt = applyMedFilt(mkt, medianFilter);
     else
-        disp('...user specified no median filtering');
+        disp('...no median filtering specified');
     end
 end
 end
