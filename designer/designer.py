@@ -146,7 +146,7 @@ options.add_argument('-datatype', metavar='<spec>',
 options.add_argument('-fit_constraints',
                      help='constrain the wlls fit (default 0,1,0)')
 options.add_argument('-median', action='store_true',
-                     help='Specify whether to apply constraint violation based median filter on DTI and DKI parameters'
+                     help='Specify whether to apply constraint violation based specific median filter on DTI and DKI parameters'
                      )
 options.add_argument('-outliers', action='store_true',
                      help='Perform IRWLLS outlier detection')
