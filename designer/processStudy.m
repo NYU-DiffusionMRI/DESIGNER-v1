@@ -8,19 +8,9 @@ function processStudy(varargin);
 %   Author: Siddhartha Dhiman
 %   Date Created: 02/14/2019
 %   Matlab 2018b
+
 warning off;
 
-%% Input Parsing
-%   Set default values
-defaultTBSS = 'off';
-
-%   Initialize input parser
-p = inputParser;
-addOptional(p,'studyPath');
-addParameter(p,'tbss',defaultTBSS);
-
-%   Parse input
-parse(p,width,varargin{:});
 %% Conda Variables
 envName = 'py36';
 
@@ -191,8 +181,7 @@ else
 end
 
 %   Clean up to remove '.' and '..'
-seriesList(strcmp(seriesList(:),'.')) = [];
-seriesList(strcmp(seriesList(:),'..')) = [];
+seriesList(find(startsWith(seriesList,'.'))) = [];
 
 %   Remove sequence number
 %   Find positions of '_' in strings

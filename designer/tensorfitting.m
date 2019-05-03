@@ -271,6 +271,8 @@ if size(noisePath,1) > 0
     %   The firsy column contains plots and the second contains a single
     %   legend. Plot layout sets the size of subplot and plotLocations
     %   determines where to plot them on a nPlots x 2 grid.
+    
+    nbins = 100;    % No. of bins for SNR plot
     plotLayout = [numel(listBval) 3];
     plotLocation = linspace(1,(numel(listBval)+4),numel(listBval));
     
@@ -281,11 +283,11 @@ if size(noisePath,1) > 0
     
     for j = 1:length(listBval)
         [Nproc Eproc] = histcounts(snrProc(:,meanIdx == listBval(j)),...
-            'Normalization','Probability');
+            nbins,'Normalization','Probability');
         [Nraw Eraw] = histcounts(snrRaw(:,meanIdx == listBval(j)),...
-            'Normalization','Probability');
+            nbins,'Normalization','Probability');
         
-        Nproc = smooth(Nproc);
+        Nproc = smooth(Nproc);  % Smooth vector for easy visualization
         Nraw = smooth(Nraw);
         
         %   Compute median value of each bin
