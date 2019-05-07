@@ -116,7 +116,7 @@ if wmti
     nii.hdr.dime.dim(1) = 3;
     nii.hdr.dime.dim(5) = 1;
     nii.hdr.dime.pixdim(5) = 0;
-    [awf, eas, ias] = wmti_parameters(dt, mask);
+    [awf, eas, ias] = wmti_parameters(dt, mask, violMask, medianfilter);
     disp('...saving WMTI params')
     nii.img = awf; nii.hdr.dime.glmax = max(awf(:)); save_untouch_nii(nii,fullfile(outdir,'awf.nii'));
     fields = fieldnames(ias);
