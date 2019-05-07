@@ -1,5 +1,5 @@
 
-function [fa, md, rd, ad, fe, mk, rk, ak, kfa, mkt] = dki_parameters(dt, mask, violMask, medianfilter)
+function [fa, md, rd, ad, fe, mk, rk, ak, kfa, mkt, medianFilter] = dki_parameters(dt, mask, violMask, medianfilter)
 % diffusion and kurtosis tensor parameter calculation
 %
 % -----------------------------------------------------------------------------------
@@ -43,6 +43,7 @@ function [fa, md, rd, ad, fe, mk, rk, ak, kfa, mkt] = dki_parameters(dt, mask, v
 %  8. ak:                axial kurtosis
 %  9. kfa:               kurtosis fractional anisotropy
 %  10. mkt:              mean kurtosis tensor
+%  11. medianFilter:     median filter structure and properties
 %
 % Important: The presence of outliers "black voxels" in the kurtosis maps
 %            are we well-known, but inherent problem to DKI. Smoothing the
@@ -153,6 +154,7 @@ if medianfilter
         kfa = applyMedFilt(kfa, medianFilter);
         mkt = applyMedFilt(mkt, medianFilter);
     else
+        medianFilter.FilterStatus == 0;
         disp('...no median filtering specified');
     end
 end
