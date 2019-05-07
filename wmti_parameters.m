@@ -1,4 +1,4 @@
-function [awf, eas, ias] = wmti_parameters(dt, mask, violMask, medianfilter)
+function [awf, eas, ias] = wmti_parameters(dt, mask, violMask, medianFilter)
 % Calculation of the white matter tract integrity metrics
 %
 % -----------------------------------------------------------------------------------
@@ -179,7 +179,7 @@ for i=1:numel(fields)
 end
 
 %% Apply Median Filter
-if medianfilter == 1
+if medianFilter.FilterStatus == 1
     awf = applyMedFilt(awf, medianFilter);
     eas = applyMedFilt(eas, medianFilter);
     ias = applyMedFilt(ias, medianFilter);
