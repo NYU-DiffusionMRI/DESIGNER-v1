@@ -140,7 +140,7 @@ if medianfilter
     % Specify threshold at 10% to filter voxels with more than 10%
     % violations
     medianFilter = createFiltObj(mk, violMask, 0.1, 3);
-    global medianFilter;
+    persistent medianFilter;
     
     % Then apply filter to all maps
     if medianFilter.FilterStatus == 1
