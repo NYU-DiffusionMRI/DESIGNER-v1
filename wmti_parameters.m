@@ -1,4 +1,4 @@
-function [awf, eas, ias] = wmti_parameters(dt, mask)
+function [awf, eas, ias] = wmti_parameters(dt, mask, violMask, medianfilter)
     % Calculation of the white matter tract integrity metrics
     %
     % -----------------------------------------------------------------------------------
@@ -89,7 +89,6 @@ for i = 1:nvoxels
     e3(:, i) = eigvec(:, 3);
 end
 
-
 %% WMTI paramerers
 % creation of 10000 directions, regularly distributed on half a sphere.
 load('dirs10000.mat', 'dir')
@@ -100,7 +99,7 @@ maxk = zeros([1 nvxls]);
 N = 10000;
 nblocks = 10;
 for i=1:nblocks;
-    akc = AKC(dt, dir((N/nblocks*(i-1))+1:N/nblocks*i, :)); %#ok<NODEF>
+    akc = AKC(dt, dir((N/nblocks*(i-1))+1:N/nblocks*i, :));
     maxk = nanmax([maxk; akc], [], 1);
 end
 
@@ -167,11 +166,6 @@ for i=1:nvxls
         end
 end
 
-
-
-
-            
-            
 %% return maps
 awf = vectorize(awf, mask);
 fields = fieldnames(ias);
@@ -184,9 +178,14 @@ for i=1:numel(fields)
     eas = setfield(eas, fields{i}, vectorize(getfield(eas, fields{i}), mask));  %#ok<*SFLD>
 end
     
-    
+%% Apply Median Filter
+if medianfilter == 1
+    awf = applyMedFilt(awf, medianFilter);
+    eas = applyMedFilt(eas, medianFilter);
+    ias = applyMedFilt(ias, medianFilter);
+else
+    disp('Skipping median filtering of WMTI');
 end
-
 
 function [akc, adc] = AKC(dt, dir)
     [W_ind, W_cnt] = createTensorOrder(4);
