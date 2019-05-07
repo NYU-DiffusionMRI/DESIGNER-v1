@@ -139,8 +139,8 @@ mkt = vectorize(mkt, mask);
 if medianfilter
     % Specify threshold at 10% to filter voxels with more than 10%
     % violations
-    medianFilter = createFiltObj(mk, violMask, 0.1, 3);
     persistent medianFilter;
+    medianFilter = createFiltObj(mk, violMask, 0.1, 3);
     
     % Then apply filter to all maps
     if medianFilter.FilterStatus == 1
