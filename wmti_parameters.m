@@ -1,4 +1,4 @@
-function [awf, eas, ias] = wmti_parameters(dt, mask, violMask, medianFilter)
+function [awf, eas, ias] = wmti_parameters(dt, mask, medianFilter)
 % Calculation of the white matter tract integrity metrics
 %
 % -----------------------------------------------------------------------------------
@@ -170,19 +170,29 @@ end
 awf = vectorize(awf, mask);
 fields = fieldnames(ias);
 for i=1:numel(fields)
-    ias = setfield(ias, fields{i}, vectorize(getfield(ias, fields{i}), mask));  %#ok<*GFLD>
+    ias = setfield(ias, fields{i}, vectorize(getfield(ias, fields{i}), mask));
 end
 
 fields = fieldnames(eas);
 for i=1:numel(fields)
-    eas = setfield(eas, fields{i}, vectorize(getfield(eas, fields{i}), mask));  %#ok<*SFLD>
+    eas = setfield(eas, fields{i}, vectorize(getfield(eas, fields{i}), mask));
 end
 
 %% Apply Median Filter
 if medianFilter.FilterStatus == 1
     awf = applyMedFilt(awf, medianFilter);
-    eas = applyMedFilt(eas, medianFilter);
-    ias = applyMedFilt(ias, medianFilter);
+    
+    ias.da1 = applyMedFilt(ias.da1, medianFilter);
+    ias.da2 = applyMedFilt(ias.da2, medianFilter);
+    ias.da3 = applyMedFilt(ias.da3, medianFilter);
+    ias.da_perp = applyMedFilt(ias.da_perp, medianFilter);
+    ias.Da = applyMedFilt(ias.Da, medianFilter);
+    
+    eas.de1 = applyMedFilt(eas.de1, medianFilter);
+    eas.de2 = applyMedFilt(eas.de2, medianFilter);
+    eas.de3 = applyMedFilt(eas.de3, medianFilter);
+    eas.de_perp = applyMedFilt(eas.de_perp, medianFilter);
+    eas.tort = applyMedFilt(eas.tort, medianFilter);
 else
     disp('Skipping median filtering of WMTI');
 end
