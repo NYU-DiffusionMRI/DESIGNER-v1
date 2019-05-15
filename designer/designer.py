@@ -338,6 +338,13 @@ if app.args.prealign:
 # epi + eddy current and motion correction
 # if number of input volumes is greater than 1, make a new acqp and index file.
 
+# find bvec and open first to determine whether full shell or hal shell
+call('mrinfo -export_grad_fsl tmp.bvec tmp.bval working.mif',shell=True)
+isHalfSphere = bool(0)
+bvecs = np.transpose(np.loadtxt('tmp.bvec'))
+
+# remove NaNs
+bvecs = bvecs[~np.isnan(bvecs)]
 if app.args.eddy:
     print('...Beginning EDDY')
     path2qc = app.args.output + '/QC/Eddy'
