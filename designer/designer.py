@@ -373,7 +373,7 @@ else:
     eddyShell = '--data_is_shelled'
 
 if app.args.rpe_none:
-    call('dwipreproc -eddyqc_all ' + path2qc + ' -eddy_options " --repol ' + eddyShell + '"' + ' -rpe_none -pe_dir '
+    call('dwipreproc -eddyqc_all ' + path2qc + ' -eddy_options "--repol ' + eddyShell + '"' + ' -rpe_none -pe_dir '
                  + app.args.pe_dir + ' working.mif dwiec.mif -nthreads 16 -force',shell=True)
 elif app.args.rpe_pair:
     call('dwiextract -bzero dwi.mif - | mrconvert -force -coord 3 0 - b0pe.mif',shell=True
@@ -389,7 +389,7 @@ elif app.args.rpe_pair:
         call('mrconvert -force ' + path.fromUser(app.args.rpe_pair,
                     True) + ' b0rpe.mif',shell=True)
     call('mrcat -axis 3 b0pe.mif b0rpe.mif rpepair.mif',shell=True)
-    call('dwipreproc -eddyqc_all ' + path2qc + ' -eddy_options " --repol ' + eddyShell + '"' + ' -rpe_pair -se_epi rpepair.mif -pe_dir '
+    call('dwipreproc -eddyqc_all ' + path2qc + ' -eddy_options "--repol ' + eddyShell + '"' + ' -rpe_pair -se_epi rpepair.mif -pe_dir '
                  + app.args.pe_dir + ' working.mif dwiec.mif -nthreads 16 -force',shell=True)
 elif app.args.rpe_all:
     call('mrconvert -force -export_grad_mrtrix grad.txt dwi.mif tmp.mif',shell=True
@@ -399,11 +399,11 @@ elif app.args.rpe_all:
                 + ' dwirpe.mif',shell=True)
     call('mrcat -axis 3 working.mif dwirpe.mif dwipe_rpe.mif',shell=True
                 )
-    call('dwipreproc -eddyqc_all ' + path2qc + ' -eddy_options " --repol ' + eddyShell + '"' + ' -rpe_all -pe_dir '
+    call('dwipreproc -eddyqc_all ' + path2qc + ' -eddy_options "--repol ' + eddyShell + '"' + ' -rpe_all -pe_dir '
                  + app.args.pe_dir + ' dwipe_rpe.mif dwiec.mif -nthreads 16 -force',shell=True)
     run.function(os.remove, 'tmp.mif')
 elif app.args.rpe_header:
-    call('dwipreproc -eddyqc_all ' + path2qc + ' -eddy_options " --repol ' + eddyShell + '"' + ' -rpe_header working.mif dwiec.mif -nthreads 16 -force',shell=True
+    call('dwipreproc -eddyqc_all ' + path2qc + ' -eddy_options "--repol ' + eddyShell + '"' + ' -rpe_header working.mif dwiec.mif -nthreads 16 -force',shell=True
                 )
 elif not app.args.rpe_header and not app.args.rpe_all \
     and not app.args.rpe_pair:
