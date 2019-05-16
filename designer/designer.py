@@ -350,7 +350,7 @@ bvecs = np.transpose(np.loadtxt('tmp.bvec'))  # load bvecs
 bvecs[~np.isnan(bvecs).any(axis=1)]  # remove NaNs
 if not bvecs.any():
     isHalfSphere = bool(0)
-assert np.size(bvecs,1)=3, "BVEC file needs to contain three rows (X,Y,Z coordinates)"
+assert np.size(bvecs,1) == 3, "BVEC file needs to contain three rows (X,Y,Z coordinates)"
 bvecs = bvecs[~np.all(bvecs == 0, axis=1)]  # remove rows where X = Y = Z = 0
 mn = np.mean(bvecs,0)
 Dx = math.sqrt(np.sum(np.power(mn,2)))
