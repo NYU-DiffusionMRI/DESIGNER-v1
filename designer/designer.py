@@ -338,18 +338,42 @@ if app.args.prealign:
 # epi + eddy current and motion correction
 # if number of input volumes is greater than 1, make a new acqp and index file.
 
-# find bvec and open first to determine whether full shell or hal shell
-call('mrinfo -export_grad_fsl tmp.bvec tmp.bval working.mif',shell=True)
-isHalfSphere = bool(0)
-bvecs = np.transpose(np.loadtxt('tmp.bvec'))
-
-# remove NaNs
-bvecs = bvecs[~np.isnan(bvecs)]
 if app.args.eddy:
     print('...Beginning EDDY')
     path2qc = app.args.output + '/QC/Eddy'
+
+# find bvec and open first to determine whether full shell or half shell
+# code adapted from Chris Rorden's nii_preprocess
+call('mrinfo -export_grad_fsl tmp.bvec tmp.bval working.mif',shell=True)
+isHalfSphere = bool(0)
+bvecs = np.transpose(np.loadtxt('tmp.bvec'))  # load bvecs
+bvecs[~np.isnan(bvecs).any(axis=1)]  # remove NaNs
+if not bvecs.any():
+    isHalfSphere = bool(0)
+assert np.size(bvecs,1)=3, "BVEC file needs to contain three rows (X,Y,Z coordinates)"
+bvecs = bvecs[~np.all(bvecs == 0, axis=1)]  # remove rows where X = Y = Z = 0
+mn = np.mean(bvecs,0)
+Dx = math.sqrt(np.sum(np.power(mn,2)))
+Dx = np.repeat(Dx,3)
+Xu = np.divide(mn,Dx)  # mean unit length
+mn = np.ones([np.size(bvecs,0),3]) * Xu
+minV = min(np.sum(bvecs.conj() * mn, axis=1))
+thetaInDeg = math.degrees(math.acos(minV))
+if thetaInDeg < 110:
+    isHalfSphere = bool(1)
+    print('Sampling appears to be half-sphere:',thetaInDeg,'degrees')
+    print('Running EDDY with "--slm=linear"')
+else:
+    print('Sampling appears to be full-sphere:',thetaInDeg,'degrees')
+    print('Running EDDY with "--data_is_shelled"')
+
+if isHalfSphere:
+    eddyShell = '--slm=linear'
+else:
+    eddyShell = '--data_is_shelled'
+
     if app.args.rpe_none:
-        call('dwipreproc -eddyqc_all ' + path2qc + ' -eddy_options " --repol --data_is_shelled" -rpe_none -pe_dir '
+        call('dwipreproc -eddyqc_all ' + path2qc + ' -eddy_options " --repol ' + eddyShell + '"' + ' -rpe_none -pe_dir '
                      + app.args.pe_dir + ' working.mif dwiec.mif -nthreads 16 -force',shell=True)
     elif app.args.rpe_pair:
         call('dwiextract -bzero dwi.mif - | mrconvert -force -coord 3 0 - b0pe.mif',shell=True
@@ -365,7 +389,7 @@ if app.args.eddy:
             call('mrconvert -force ' + path.fromUser(app.args.rpe_pair,
                         True) + ' b0rpe.mif',shell=True)
         call('mrcat -axis 3 b0pe.mif b0rpe.mif rpepair.mif',shell=True)
-        call('dwipreproc -eddyqc_all ' + path2qc + ' -eddy_options " --repol --data_is_shelled" -rpe_pair -se_epi rpepair.mif -pe_dir '
+        call('dwipreproc -eddyqc_all ' + path2qc + ' -eddy_options " --repol ' + eddyShell + '"' + ' -rpe_pair -se_epi rpepair.mif -pe_dir '
                      + app.args.pe_dir + ' working.mif dwiec.mif -nthreads 16 -force',shell=True)
     elif app.args.rpe_all:
         call('mrconvert -force -export_grad_mrtrix grad.txt dwi.mif tmp.mif',shell=True
@@ -375,11 +399,11 @@ if app.args.eddy:
                     + ' dwirpe.mif',shell=True)
         call('mrcat -axis 3 working.mif dwirpe.mif dwipe_rpe.mif',shell=True
                     )
-        call('dwipreproc -eddyqc_all ' + path2qc + ' -eddy_options " --repol --data_is_shelled" -rpe_all -pe_dir '
+        call('dwipreproc -eddyqc_all ' + path2qc + ' -eddy_options " --repol ' + eddyShell + '"' + ' -rpe_all -pe_dir '
                      + app.args.pe_dir + ' dwipe_rpe.mif dwiec.mif -nthreads 16 -force',shell=True)
         run.function(os.remove, 'tmp.mif')
     elif app.args.rpe_header:
-        call('dwipreproc -eddyqc_all ' + path2qc + ' -eddy_options " --repol --data_is_shelled" -rpe_header working.mif dwiec.mif -nthreads 16 -force',shell=True
+        call('dwipreproc -eddyqc_all ' + path2qc + ' -eddy_options " --repol ' + eddyShell + '"' + '-rpe_header working.mif dwiec.mif -nthreads 16 -force',shell=True
                     )
     elif not app.args.rpe_header and not app.args.rpe_all \
         and not app.args.rpe_pair:
