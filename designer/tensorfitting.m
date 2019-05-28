@@ -79,7 +79,7 @@ if cumulants
 end
 
 disp('...getting DTI and DKI params')
-[fa, md, rd, ad, fe, mk, rk, ak, kfa, mkt] = dki_parameters(dt,mask,violMask,medianfilter);
+[fa, md, rd, ad, fe, mk, rk, ak, kfa, mkt, medianFilter] = dki_parameters(dt,mask,violMask,medianfilter);
 fe = cat(4,fa.*fe(:,:,:,1),fa.*fe(:,:,:,2),fa.*fe(:,:,:,3));
 
 if dti
@@ -116,7 +116,7 @@ if wmti
     nii.hdr.dime.dim(1) = 3;
     nii.hdr.dime.dim(5) = 1;
     nii.hdr.dime.pixdim(5) = 0;
-    [awf, eas, ias] = wmti_parameters(dt, mask);
+    [awf, eas, ias] = wmti_parameters(dt, mask, medianFilter);
     disp('...saving WMTI params')
     nii.img = awf; nii.hdr.dime.glmax = max(awf(:)); save_untouch_nii(nii,fullfile(outdir,'awf.nii'));
     fields = fieldnames(ias);
