@@ -9,7 +9,6 @@ if not mrtrixbin:
     print("cannot find path to mrtrix3, please make sure <path/to/mrtrix3/bin> is in your PATH")
     quit()
 mrtrixlib = "".join(mrtrixbin)[:-3]+'lib'
-print(mrtrixlib)
 
 import inspect, sys, numpy as np, math, gzip, shutil
 from distutils.spawn import find_executable
@@ -285,6 +284,7 @@ if app.args.smooth:
     print("...Beginning smoothing")
     os.chdir(designer_root)
     eng = matlab.engine.start_matlab()
+    eng.addpath(os.path.join(DKI_root,'utils'), nargout=0)
     eng.runsmoothing(path.toTemp('',True),app.args.smooth,DKI_root,nargout=0)
     eng.quit()
     app.gotoTempDir()
@@ -350,6 +350,8 @@ if app.args.DTIparams or app.args.DKIparams or app.args.WMTIparams:
     print("...Beginning tensor estimation")
     os.chdir(designer_root)
     eng = matlab.engine.start_matlab()
+    eng.addpath(os.path.join(DKI_root,'utils'), nargout=0)
+    eng.addpath(os.path.join(DKI_root,'parameter_estimation'), nargout=0)
 
     outliers=0
     if app.args.outliers:
