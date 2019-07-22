@@ -1,8 +1,8 @@
 # Designer with Matlab Integration
-## Depreciation Warning
-### Warning: This project will be depreciated in favor of pure Python3-based implementation. This is being done to minimize setup variations on different systems. We encourage users to wait till the end end of September for the planned release of PyDesigner.
-
 This repo is a collection of scripts aimed at wrapping Designer into MATLAB. This is done for those more familiar with MATLAB than Python. This integration also allows one to use native MATLAB functions such as `for` loops and `dir` to automate processing an entire study.
+
+## Depreciation Warning
+### Warning: This project will be depreciated in favor of pure Python3-based implementation. This is being done to minimize setup variations on different systems. We encourage users to wait till the end of September for the planned release of PyDesigner.
 
 ## Original README
 The following excerpt is taken from the original designer fork:
