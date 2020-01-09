@@ -11,44 +11,45 @@ if not mrtrixbin:
 mrtrixlib = "".join(mrtrixbin)[:-3]+'lib'
 
 import inspect, sys, numpy as np, math, gzip, shutil
+from glob import glob
 from distutils.spawn import find_executable
 sys.path.insert(0, mrtrixlib)
 from mrtrix3 import app, file, fsl, image, path, phaseEncoding, run
 
 app.init('Benjamin Ades-Aron (benjamin.ades-aron@nyumc.org)',
-	'DWI processing with DESIGNER')
-app.cmdline.addDescription("""1. pre-check: concatenate all dwi series and make sure the all diffusion AP images and PA image have the same matrix dimensions/orientations 
- 						2. denoise the complete dataset\n
-                        
-						3. gibbs ringing correction on complete dataset\n
-                        
- 						4. If multiple diffusion series are input, do rigid boy alignment\n
+    'DWI processing with DESIGNER')
+app.cmdline.addDescription("""1. pre-check: concatenate all dwi series and make sure the all diffusion AP images and PA image have the same matrix dimensions/orientations
+                              2. denoise the complete dataset\n
 
- 						5. topup + eddy, rotate output bvecs\n
-                        
- 						6. perform b1 bias correction on each dwi subset\n
-                        
- 						7. CSF excluded smoothing\n
-                        
-                        8. Rician bias correction\n
-                        
-                        9. Normalization to white matter in first b0 image\n
-                        
- 						10. irwlls outlier map, cwlls dki fit\n
-                        
- 						11. outlier detection and removal
- 	""")
-app.cmdline.addCitation('','Veraart, J.; Novikov, D.S.; Christiaens, D.; Ades-aron, B.; Sijbers, J. & Fieremans, E. Denoising of diffusion MRI using random matrix theory. NeuroImage, 2016, 142, 394-406, doi: 10.1016/j.neuroimage.2016.08.016',True)
-app.cmdline.addCitation('','Veraart, J.; Fieremans, E. & Novikov, D.S. Diffusion MRI noise mapping using random matrix theory. Magn. Res. Med., 2016, 76(5), 1582-1593, doi:10.1002/mrm.26059',True)
-app.cmdline.addCitation('','Kellner, E., et al., Gibbs-Ringing Artifact Removal Based on Local Subvoxel-Shifts. Magnetic Resonance in Medicine, 2016. 76(5): p. 1574-1581.',True)
-app.cmdline.addCitation('','Koay, C.G. and P.J. Basser, Analytically exact correction scheme for signal extraction from noisy magnitude MR signals. Journal of Magnetic Resonance, 2006. 179(2): p. 317-322.',True)
+                              3. gibbs ringing correction on complete dataset\n
+
+                              4. If multiple diffusion series are input, do rigid boy alignment\n
+
+                              5. topup + eddy, rotate output bvecs\n
+
+                              6. perform b1 bias correction on each dwi subset\n
+
+                              7. CSF excluded smoothing\n
+
+                              8. Rician bias correction\n
+
+                              9. Normalization to white matter in first b0 image\n
+
+                              10. irwlls outlier map, cwlls dki fit\n
+
+                              11. outlier detection and removal
+                              """)
+app.cmdline.addCitation('','Veraart, J.; Novikov, D.S.; Christiaens, D.; Ades-aron, B.; Sijbers, J. & Fieremans, E. Denoising of diffusion MRI using random matrix theory. NeuroImage, 2016, 142, 394-406, doi: 10.1016/j.neuroimage.2016.08.016', True)
+app.cmdline.addCitation('','Veraart, J.; Fieremans, E. & Novikov, D.S. Diffusion MRI noise mapping using random matrix theory. Magn. Res. Med., 2016, 76(5), 1582-1593, doi:10.1002/mrm.26059', True)
+app.cmdline.addCitation('','Kellner, E., et al., Gibbs-Ringing Artifact Removal Based on Local Subvoxel-Shifts. Magnetic Resonance in Medicine, 2016. 76(5): p. 1574-1581.', True)
+app.cmdline.addCitation('','Koay, C.G. and P.J. Basser, Analytically exact correction scheme for signal extraction from noisy magnitude MR signals. Journal of Magnetic Resonance, 2006. 179(2): p. 317-322.', True)
 app.cmdline.addCitation('', 'Andersson, J. L. & Sotiropoulos, S. N. An integrated approach to correction for off-resonance effects and subject movement in diffusion MR imaging. NeuroImage, 2015, 125, 1063-1078', True)
 app.cmdline.addCitation('', 'Smith, S. M.; Jenkinson, M.; Woolrich, M. W.; Beckmann, C. F.; Behrens, T. E.; Johansen-Berg, H.; Bannister, P. R.; De Luca, M.; Drobnjak, I.; Flitney, D. E.; Niazy, R. K.; Saunders, J.; Vickers, J.; Zhang, Y.; De Stefano, N.; Brady, J. M. & Matthews, P. M. Advances in functional and structural MR image analysis and implementation as FSL. NeuroImage, 2004, 23, S208-S219', True)
 app.cmdline.addCitation('', 'Skare, S. & Bammer, R. Jacobian weighting of distortion corrected EPI data. Proceedings of the International Society for Magnetic Resonance in Medicine, 2010, 5063', True)
 app.cmdline.addCitation('', 'Andersson, J. L.; Skare, S. & Ashburner, J. How to correct susceptibility distortions in spin-echo echo-planar images: application to diffusion tensor imaging. NeuroImage, 2003, 20, 870-888', True)
-app.cmdline.addCitation('','Zhang, Y.; Brady, M. & Smith, S. Segmentation of brain MR images through a hidden Markov random field model and the expectation-maximization algorithm. IEEE Transactions on Medical Imaging, 2001, 20, 45-57',True)
-app.cmdline.addCitation('', 'Smith, S. M.; Jenkinson, M.; Woolrich, M. W.; Beckmann, C. F.; Behrens, T. E.; Johansen-Berg, H.; Bannister P. R.; De Luca, M.; Drobnjak, I.; Flitney, D. E.; Niazy, R. K.; Saunders, J.; Vickers, J.; Zhang, Y.; DeStefano, N.; Brady, J. M. & Matthews, P. M. Advances in functional and structural MR image analysis and implementation as FSL. NeuroImage, 2004,23, S208-S219',True)
-app.cmdline.addCitation('','Collier, Q., et al., Iterative reweighted linear least squares for accurate, fast, and robust estimation of diffusion magnetic resonance parameters. Magn Reson Med, 2015. 73(6): p. 2174-84.',True)
+app.cmdline.addCitation('','Zhang, Y.; Brady, M. & Smith, S. Segmentation of brain MR images through a hidden Markov random field model and the expectation-maximization algorithm. IEEE Transactions on Medical Imaging, 2001, 20, 45-57', True)
+app.cmdline.addCitation('', 'Smith, S. M.; Jenkinson, M.; Woolrich, M. W.; Beckmann, C. F.; Behrens, T. E.; Johansen-Berg, H.; Bannister P. R.; De Luca, M.; Drobnjak, I.; Flitney, D. E.; Niazy, R. K.; Saunders, J.; Vickers, J.; Zhang, Y.; DeStefano, N.; Brady, J. M. & Matthews, P. M. Advances in functional and structural MR image analysis and implementation as FSL. NeuroImage, 2004,23, S208-S219', True)
+app.cmdline.addCitation('','Collier, Q., et al., Iterative reweighted linear least squares for accurate, fast, and robust estimation of diffusion magnetic resonance parameters. Magn Reson Med, 2015. 73(6): p. 2174-84.', True)
 app.cmdline.add_argument('input',  help='The input DWI series. For multiple input series, separate file names with commas (i.e. dwi1.nii,dwi2.nii,...)')
 app.cmdline.add_argument('output', help='The output directory (includes diffusion parameters, kurtosis parameters and processed dwi) unless option -processing_only is used, in which case this is the output basename')
 options = app.cmdline.add_argument_group('Other options for the DESIGNER script')
@@ -66,13 +67,15 @@ options.add_argument('-DTIparams', action='store_true', help='Include DTI parame
 options.add_argument('-DKIparams', action='store_true', help='Include DKI parameters in output folder (mk,ak,rk)')
 options.add_argument('-WMTIparams', action='store_true', help='Include DKI parameters in output folder (awf,ias_params,eas_params)')
 options.add_argument('-akc', action='store_true', help='brute force K tensor outlier rejection')
-options.add_argument('-kcumulants', action='store_true',help='output the kurtosis tensor with W cumulant rather than K')
-options.add_argument('-mask', action='store_true',help='compute a brain mask prior to tensor fitting to stip skull and improve efficientcy')
+options.add_argument('-kcumulants', action='store_true', help='output the kurtosis tensor with W cumulant rather than K')
+options.add_argument('-mask', action='store_true', help='compute a brain mask prior to tensor fitting to strip skull and improve efficiency')
+options.add_argument('-maskfile', metavar=('<mask_niifile>'), help='use an existing brain mask to strip skull and improve efficiency')
+options.add_argument('-gzip_niis', action='store_true', help='gzip output NIfTI files to save space')
 options.add_argument('-datatype', metavar=('<spec>'), help='If using the "-processing_only" option, you can specify the output datatype. Valid options are float32, float32le, float32be, float64, float64le, float64be, int64, uint64, int64le, uint64le, int64be, uint64be, int32, uint32, int32le, uint32le, int32be, uint32be, int16, uint16, int16le, uint16le, int16be, uint16be, cfloat32, cfloat32le, cfloat32be, cfloat64, cfloat64le, cfloat64be, int8, uint8, bit')
-options.add_argument('-fit_constraints',help='constrain the wlls fit (default 0,1,0)')
-options.add_argument('-outliers',action='store_true',help='Perform IRWLLS outlier detection')
-options.add_argument('-fslbvec',metavar=('<bvecs>'),help='specify bvec path if path is different from the path to the dwi or the file has an unusual extention')
-options.add_argument('-fslbval',metavar=('<bvals>'),help='specify bval path if path is different from the path to the dwi or the file has an unusual extention')
+options.add_argument('-fit_constraints', help='constrain the wlls fit (default 0,1,0)')
+options.add_argument('-outliers', action='store_true', help='Perform IRWLLS outlier detection')
+options.add_argument('-fslbvec', metavar=('<bvecs>'), help='specify bvec path if path is different from the path to the dwi or the file has an unusual extention')
+options.add_argument('-fslbval', metavar=('<bvals>'), help='specify bval path if path is different from the path to the dwi or the file has an unusual extention')
 rpe_options = app.cmdline.add_argument_group('Options for specifying the acquisition phase-encoding design')
 rpe_options.add_argument('-rpe_none', action='store_true', help='Specify that no reversed phase-encoding image data is being provided; eddy will perform eddy current and motion correction only')
 rpe_options.add_argument('-rpe_pair', metavar=('<reverse PE b=0 image>'), help='Specify the reverse phase encoding image')
@@ -82,13 +85,13 @@ rpe_options.add_argument('-pe_dir', metavar=('<phase encoding direction>'), help
 app.parse()
 
 def splitext_(path):
-    for ext in ['.tar.gz', '.tar.bz2','.nii.gz']:
+    for ext in ['.tar.gz', '.tar.bz2', '.nii.gz']:
         if path.endswith(ext):
             return path[:-len(ext)], path[-len(ext):]
     return os.path.splitext(path)
 
 designer_root = os.path.dirname(os.path.realpath(__file__))
-DKI_root = os.path.abspath(os.path.join(designer_root,'..'))
+DKI_root = os.path.abspath(os.path.join(designer_root, '..'))
 
 app.makeTempDir()
 
@@ -130,25 +133,30 @@ else:
 
 if len(DWInlist) == 1:
     if not isdicom:
-        run.command('mrconvert -stride -1,2,3,4 -fslgrad ' + bveclist[0] + ' ' + bvallist[0] + ' ' + ''.join(DWInlist) + ''.join(DWIext) + ' ' + path.toTemp('dwi.mif',True))
+        run.command('mrconvert -stride -1,2,3,4 -fslgrad ' + bveclist[0] + ' ' + bvallist[0] + ' ' + ''.join(DWInlist) + ''.join(DWIext) + ' ' + path.toTemp('dwi.mif', True))
     else:
-        run.command('mrconvert -stride -1,2,3,4 ' + ''.join(DWInlist) + ' ' + path.toTemp('dwi.mif',True))
+        run.command('mrconvert -stride -1,2,3,4 ' + ''.join(DWInlist) + ' ' + path.toTemp('dwi.mif', True))
 else:
     for idx,i in enumerate(DWInlist):
         if not isdicom:
-            run.command('mrconvert -stride -1,2,3,4 -fslgrad ' + bveclist[idx] + ' ' + bvallist[idx] + ' ' + i + DWIext[idx] + ' ' + path.toTemp('dwi' + str(idx) + '.mif',True))
+            run.command('mrconvert -stride -1,2,3,4 -fslgrad ' + bveclist[idx] + ' ' + bvallist[idx] + ' ' + i + DWIext[idx] + ' ' + path.toTemp('dwi' + str(idx) + '.mif', True))
         else:
-            run.command('mrconvert -stride -1,2,3,4 ' + i + ' ' + path.toTemp('dwi' + str(idx) + '.mif',True))
-        dwi_header = image.Header(path.toTemp('dwi' + str(idx) + '.mif',True))
+            run.command('mrconvert -stride -1,2,3,4 ' + i + ' ' + path.toTemp('dwi' + str(idx) + '.mif', True))
+        dwi_header = image.Header(path.toTemp('dwi' + str(idx) + '.mif', True))
         dwi_ind_size.append([ int(s) for s in dwi_header.size() ])
-        miflist.append(path.toTemp('dwi' + str(idx) + '.mif',True))
+        miflist.append(path.toTemp('dwi' + str(idx) + '.mif', True))
     DWImif = ' '.join(miflist)
-    run.command('mrcat -axis 3 ' + DWImif + ' ' + path.toTemp('dwi.mif',True))
+    run.command('mrcat -axis 3 ' + DWImif + ' ' + path.toTemp('dwi.mif', True))
+
+if app.args.maskfile:
+    # Copy user-supplied mask nii into temp-dir
+    # Use FSL's imcp so we don't have to worry about file extensions
+    run.command('imcp {} '.format(app.args.maskfile) + path.toTemp('brain_mask', True))
 
 app.gotoTempDir()
 
 # get diffusion header info - check to make sure all values are valid for processing
-dwi_header = image.Header(path.toTemp('dwi.mif',True))
+dwi_header = image.Header(path.toTemp('dwi.mif', True))
 dwi_size = [ int(s) for s in dwi_header.size() ]
 grad = dwi_header.keyval()['dw_scheme']
 grad = [ line for line in grad ]
@@ -156,25 +164,25 @@ grad = [ [ float(f) for f in line ] for line in grad ]
 stride = dwi_header.strides()
 num_volumes = 1
 if len(dwi_size) == 4:
-  num_volumes = dwi_size[3]
+    num_volumes = dwi_size[3]
 bval = [i[3] for i in grad]
 
 nvols = [i[3] for i in dwi_ind_size]
 for idx,i in enumerate(DWInlist):
     if len(DWInlist) == 1:
-        tmpidxlist = range(0,num_volumes)
+        tmpidxlist = range(0, num_volumes)
     else:
-        tmpidxlist = range(sum(nvols[:idx+1]),sum(nvols[:idx+1])+nvols[idx+1])
+        tmpidxlist = range(sum(nvols[:idx+1]), sum(nvols[:idx+1])+nvols[idx+1])
     idxlist.append(','.join(str(i) for i in tmpidxlist))
 
 # Perform initial checks on input images
 if not grad:
-  app.error('No diffusion gradient table found')
+    app.error('No diffusion gradient table found')
 if not len(grad) == num_volumes:
-  app.error('Number of lines in gradient table (' + str(len(grad)) + ') does not match input image (' + str(num_volumes) + ' volumes); check your input data')
+    app.error('Number of lines in gradient table (' + str(len(grad)) + ') does not match input image (' + str(num_volumes) + ' volumes); check your input data')
 
 if app.args.extent:
-	extent = app.args.extent
+    extent = app.args.extent
 else: extent = '5,5,5'
 
 run.command('mrconvert dwi.mif working.mif')
@@ -217,15 +225,15 @@ if app.args.eddy:
         run.command('dwipreproc -eddy_options " --repol --data_is_shelled" -rpe_none -pe_dir ' + app.args.pe_dir + ' working.mif dwiec.mif')
     elif app.args.rpe_pair:
         run.command('dwiextract -bzero dwi.mif - | mrconvert -coord 3 0 - b0pe.mif')
-        rpe_size = [ int(s) for s in image.Header(path.fromUser(app.args.rpe_pair,True)).size() ]
+        rpe_size = [ int(s) for s in image.Header(path.fromUser(app.args.rpe_pair, True)).size() ]
         if len(rpe_size) == 4:
-            run.command('mrconvert -coord 3 0 ' + path.fromUser(app.args.rpe_pair,True) + ' b0rpe.mif')
-        else: run.command('mrconvert ' + path.fromUser(app.args.rpe_pair,True) + ' b0rpe.mif')
+            run.command('mrconvert -coord 3 0 ' + path.fromUser(app.args.rpe_pair, True) + ' b0rpe.mif')
+        else: run.command('mrconvert ' + path.fromUser(app.args.rpe_pair, True) + ' b0rpe.mif')
         run.command('mrcat -axis 3 b0pe.mif b0rpe.mif rpepair.mif')
         run.command('dwipreproc -eddy_options " --repol --data_is_shelled" -rpe_pair -se_epi rpepair.mif -pe_dir ' + app.args.pe_dir + ' working.mif dwiec.mif')
     elif app.args.rpe_all:
         run.command('mrconvert -export_grad_mrtrix grad.txt dwi.mif tmp.mif')
-        run.command('mrconvert -grad grad.txt ' + path.fromUser(app.args.rpe_all,True) + ' dwirpe.mif')
+        run.command('mrconvert -grad grad.txt ' + path.fromUser(app.args.rpe_all, True) + ' dwirpe.mif')
         run.command('mrcat -axis 3 working.mif dwirpe.mif dwipe_rpe.mif')
         run.command('dwipreproc -eddy_options " --repol --data_is_shelled" -rpe_all -pe_dir ' + app.args.pe_dir + ' dwipe_rpe.mif dwiec.mif')
         run.function(os.remove,'tmp.mif')
@@ -254,13 +262,20 @@ if app.args.b1correct:
     run.function(os.remove,'working.mif')
     run.command('mrconvert dwibc.mif working.mif')
 
-# generate a final brainmask
-if app.args.mask or app.args.smooth or app.args.normalise:
-    print("...Computing brain mask")
+# Apply user-supplied brain-mask or generate one to get brain-extracted b=0 image
+if app.args.maskfile or app.args.mask:
     run.command('dwiextract -bzero working.mif - | mrmath -axis 3 - mean b0bc.nii')
+
+if app.args.maskfile:
+    run.command('fslmaths b0bc.nii -mul brain_mask brain' + fsl_suffix)
+
+elif app.args.mask or app.args.smooth or app.args.normalise:
+    print("...Computing brain mask")
     # run.command('dwi2mask dwibc.mif - | maskfilter - dilate brain_mask.nii')
     # run.command('fslmaths b0bc.nii -mas brain_mask.nii brain')
     run.command('bet b0bc.nii brain' + fsl_suffix + ' -m -f 0.25')
+
+# gunzip brain_mask if necessary
 if os.path.isfile('brain_mask.nii.gz'):
     with gzip.open('brain_mask' + fsl_suffix, 'rb') as f_in, open('brain_mask.nii', 'wb') as f_out:
         shutil.copyfileobj(f_in, f_out)
@@ -284,8 +299,8 @@ if app.args.smooth:
     print("...Beginning smoothing")
     os.chdir(designer_root)
     eng = matlab.engine.start_matlab()
-    eng.addpath(os.path.join(DKI_root,'utils'), nargout=0)
-    eng.runsmoothing(path.toTemp('',True),app.args.smooth,DKI_root,nargout=0)
+    eng.addpath(os.path.join(DKI_root, 'utils'), nargout=0)
+    eng.runsmoothing(path.toTemp('', True), app.args.smooth, DKI_root, nargout=0)
     eng.quit()
     app.gotoTempDir()
     run.command('mrconvert -grad grad.txt dwism.nii dwism.mif')
@@ -343,15 +358,17 @@ run.function(os.remove,'working.mif')
 if app.args.DTIparams or app.args.DKIparams or app.args.WMTIparams:
     if not os.path.exists(path.fromUser(app.args.output, True)):
         os.makedirs(path.fromUser(app.args.output, True))
-    shutil.copyfile(path.toTemp('dwi_designer.nii',True),path.fromUser(app.args.output + '/dwi_designer.nii', True))
-    shutil.copyfile(path.toTemp('dwi_designer.bvec',True),path.fromUser(app.args.output + '/dwi_designer.bvec', True))
-    shutil.copyfile(path.toTemp('dwi_designer.bval',True),path.fromUser(app.args.output + '/dwi_designer.bval', True))
-    
+    shutil.copyfile(path.toTemp('dwi_designer.nii', True), path.fromUser(app.args.output + '/dwi_designer.nii', True))
+    shutil.copyfile(path.toTemp('dwi_designer.bvec', True), path.fromUser(app.args.output + '/dwi_designer.bvec', True))
+    shutil.copyfile(path.toTemp('dwi_designer.bval', True), path.fromUser(app.args.output + '/dwi_designer.bval', True))
+    if app.args.maskfile or app.args.mask:
+        shutil.copyfile(path.toTemp('brain_mask.nii', True), path.fromUser(app.args.output + '/brain_mask.nii', True))
+
     print("...Beginning tensor estimation")
     os.chdir(designer_root)
     eng = matlab.engine.start_matlab()
-    eng.addpath(os.path.join(DKI_root,'utils'), nargout=0)
-    eng.addpath(os.path.join(DKI_root,'parameter_estimation'), nargout=0)
+    eng.addpath(os.path.join(DKI_root, 'utils'), nargout=0)
+    eng.addpath(os.path.join(DKI_root, 'parameter_estimation'), nargout=0)
 
     outliers=0
     if app.args.outliers:
@@ -375,17 +392,37 @@ if app.args.DTIparams or app.args.DKIparams or app.args.WMTIparams:
     if app.args.kcumulants:
         KCUM=1
 
-    eng.tensorfitting(path.toTemp('',True),path.fromUser(app.args.output, True),outliers,KCUM,DTI,DKI,WMTI,constraints,AKC,DKI_root,nargout=0)
+    eng.tensorfitting(path.toTemp('', True), path.fromUser(app.args.output, True), outliers, KCUM, DTI, DKI, WMTI, constraints, AKC, DKI_root, nargout=0)
     eng.quit()
+
+    # gzip niis if requested
+    if app.args.gzip_niis:
+        os.chdir(path.fromUser(app.args.output, True))
+        for niif in glob('*.nii'):
+            with open(niif, 'rb') as f_in:
+                with gzip.open(niif + '.gz', 'wb') as f_out:
+                    shutil.copyfileobj(f_in, f_out)
+
+            os.remove(niif)
+
     app.gotoTempDir()
 else:
-    if app.args.datatype:
-        run.command('mrconvert -datatype ' + app.args.datatype + ' ' + path.toTemp('dwi_designer.nii',True) + ' ' + path.fromUser(app.args.output + '.nii',True))
-    else:
-        shutil.copyfile(path.toTemp('dwi_designer.nii',True),path.fromUser(app.args.output + '.nii',True))
-    shutil.copyfile(path.toTemp('dwi_designer.bvec',True),path.fromUser(app.args.output + '.bvec',True))
-    shutil.copyfile(path.toTemp('dwi_designer.bval',True),path.fromUser(app.args.output + '.bval',True))
+    niif_tmp = path.toTemp('dwi_designer.nii', True)
+    niif_out = path.fromUser(app.args.output + '.nii', True)
 
+    if app.args.datatype:
+        run.command('mrconvert -datatype ' + app.args.datatype + ' ' + niif_tmp + ' ' + niif_out)
+    else:
+        shutil.copyfile(niif_tmp, niif_out)
+    shutil.copyfile(path.toTemp('dwi_designer.bvec', True), path.fromUser(app.args.output + '.bvec', True))
+    shutil.copyfile(path.toTemp('dwi_designer.bval', True), path.fromUser(app.args.output + '.bval', True))
+
+    if app.args.gzip_niis:
+        with open(niif_out, 'rb') as f_in:
+            with gzip.open(niif_out + '.gz', 'wb') as f_out:
+                shutil.copyfileobj(f_in, f_out)
+
+        os.remove(niif_out)
 
 app.complete()
 
