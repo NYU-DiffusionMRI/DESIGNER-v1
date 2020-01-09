@@ -17,27 +17,27 @@ from mrtrix3 import app, file, fsl, image, path, phaseEncoding, run
 
 app.init('Benjamin Ades-Aron (benjamin.ades-aron@nyumc.org)',
 	'DWI processing with DESIGNER')
-app.cmdline.addDescription("""1. pre-check: concatenate all dwi series and make sure the all diffusion AP images and PA image have the same matrix dimensions/orientations 
- 						2. denoise the complete dataset\n
-                        
-						3. gibbs ringing correction on complete dataset\n
-                        
- 						4. If multiple diffusion series are input, do rigid boy alignment\n
+app.cmdline.addDescription("""1. pre-check: concatenate all dwi series and make sure the all diffusion AP images and PA image have the same matrix dimensions/orientations
+                              2. denoise the complete dataset\n
 
- 						5. topup + eddy, rotate output bvecs\n
-                        
- 						6. perform b1 bias correction on each dwi subset\n
-                        
- 						7. CSF excluded smoothing\n
-                        
-                        8. Rician bias correction\n
-                        
-                        9. Normalization to white matter in first b0 image\n
-                        
- 						10. irwlls outlier map, cwlls dki fit\n
-                        
- 						11. outlier detection and removal
- 	""")
+                              3. gibbs ringing correction on complete dataset\n
+
+                              4. If multiple diffusion series are input, do rigid boy alignment\n
+
+                              5. topup + eddy, rotate output bvecs\n
+
+                              6. perform b1 bias correction on each dwi subset\n
+
+                              7. CSF excluded smoothing\n
+
+                              8. Rician bias correction\n
+
+                              9. Normalization to white matter in first b0 image\n
+
+                              10. irwlls outlier map, cwlls dki fit\n
+
+                              11. outlier detection and removal
+                              """)
 app.cmdline.addCitation('','Veraart, J.; Novikov, D.S.; Christiaens, D.; Ades-aron, B.; Sijbers, J. & Fieremans, E. Denoising of diffusion MRI using random matrix theory. NeuroImage, 2016, 142, 394-406, doi: 10.1016/j.neuroimage.2016.08.016',True)
 app.cmdline.addCitation('','Veraart, J.; Fieremans, E. & Novikov, D.S. Diffusion MRI noise mapping using random matrix theory. Magn. Res. Med., 2016, 76(5), 1582-1593, doi:10.1002/mrm.26059',True)
 app.cmdline.addCitation('','Kellner, E., et al., Gibbs-Ringing Artifact Removal Based on Local Subvoxel-Shifts. Magnetic Resonance in Medicine, 2016. 76(5): p. 1574-1581.',True)
@@ -66,13 +66,14 @@ options.add_argument('-DTIparams', action='store_true', help='Include DTI parame
 options.add_argument('-DKIparams', action='store_true', help='Include DKI parameters in output folder (mk,ak,rk)')
 options.add_argument('-WMTIparams', action='store_true', help='Include DKI parameters in output folder (awf,ias_params,eas_params)')
 options.add_argument('-akc', action='store_true', help='brute force K tensor outlier rejection')
-options.add_argument('-kcumulants', action='store_true',help='output the kurtosis tensor with W cumulant rather than K')
-options.add_argument('-mask', action='store_true',help='compute a brain mask prior to tensor fitting to stip skull and improve efficientcy')
+options.add_argument('-kcumulants', action='store_true', help='output the kurtosis tensor with W cumulant rather than K')
+options.add_argument('-mask', action='store_true', help='compute a brain mask prior to tensor fitting to strip skull and improve efficiency')
+options.add_argument('-maskfile', metavar=('<mask_niifile>'), help='use an existing brain mask to strip skull and improve efficiency')
 options.add_argument('-datatype', metavar=('<spec>'), help='If using the "-processing_only" option, you can specify the output datatype. Valid options are float32, float32le, float32be, float64, float64le, float64be, int64, uint64, int64le, uint64le, int64be, uint64be, int32, uint32, int32le, uint32le, int32be, uint32be, int16, uint16, int16le, uint16le, int16be, uint16be, cfloat32, cfloat32le, cfloat32be, cfloat64, cfloat64le, cfloat64be, int8, uint8, bit')
-options.add_argument('-fit_constraints',help='constrain the wlls fit (default 0,1,0)')
-options.add_argument('-outliers',action='store_true',help='Perform IRWLLS outlier detection')
-options.add_argument('-fslbvec',metavar=('<bvecs>'),help='specify bvec path if path is different from the path to the dwi or the file has an unusual extention')
-options.add_argument('-fslbval',metavar=('<bvals>'),help='specify bval path if path is different from the path to the dwi or the file has an unusual extention')
+options.add_argument('-fit_constraints', help='constrain the wlls fit (default 0,1,0)')
+options.add_argument('-outliers',action='store_true', help='Perform IRWLLS outlier detection')
+options.add_argument('-fslbvec', metavar=('<bvecs>'), help='specify bvec path if path is different from the path to the dwi or the file has an unusual extention')
+options.add_argument('-fslbval', metavar=('<bvals>'), help='specify bval path if path is different from the path to the dwi or the file has an unusual extention')
 rpe_options = app.cmdline.add_argument_group('Options for specifying the acquisition phase-encoding design')
 rpe_options.add_argument('-rpe_none', action='store_true', help='Specify that no reversed phase-encoding image data is being provided; eddy will perform eddy current and motion correction only')
 rpe_options.add_argument('-rpe_pair', metavar=('<reverse PE b=0 image>'), help='Specify the reverse phase encoding image')
@@ -254,13 +255,22 @@ if app.args.b1correct:
     run.function(os.remove,'working.mif')
     run.command('mrconvert dwibc.mif working.mif')
 
-# generate a final brainmask
-if app.args.mask or app.args.smooth or app.args.normalise:
-    print("...Computing brain mask")
+# copy or generate brain mask; generate brain-extracted image
+if app.args.maskfile or app.args.mask:
     run.command('dwiextract -bzero working.mif - | mrmath -axis 3 - mean b0bc.nii')
+
+if app.args.maskfile:
+    # use FSL's imcp so we don't have to worry about extensions
+    run.command('imcp ../{} brain_mask'.format(app.args.maskfile))
+    run.command('fslmaths b0bc.nii -mul brain_mask brain' + fsl_suffix)
+
+elif app.args.mask or app.args.smooth or app.args.normalise:
+    print("...Computing brain mask")
     # run.command('dwi2mask dwibc.mif - | maskfilter - dilate brain_mask.nii')
     # run.command('fslmaths b0bc.nii -mas brain_mask.nii brain')
     run.command('bet b0bc.nii brain' + fsl_suffix + ' -m -f 0.25')
+
+# gunzip brain_mask if necessary
 if os.path.isfile('brain_mask.nii.gz'):
     with gzip.open('brain_mask' + fsl_suffix, 'rb') as f_in, open('brain_mask.nii', 'wb') as f_out:
         shutil.copyfileobj(f_in, f_out)
@@ -346,7 +356,7 @@ if app.args.DTIparams or app.args.DKIparams or app.args.WMTIparams:
     shutil.copyfile(path.toTemp('dwi_designer.nii',True),path.fromUser(app.args.output + '/dwi_designer.nii', True))
     shutil.copyfile(path.toTemp('dwi_designer.bvec',True),path.fromUser(app.args.output + '/dwi_designer.bvec', True))
     shutil.copyfile(path.toTemp('dwi_designer.bval',True),path.fromUser(app.args.output + '/dwi_designer.bval', True))
-    
+
     print("...Beginning tensor estimation")
     os.chdir(designer_root)
     eng = matlab.engine.start_matlab()
