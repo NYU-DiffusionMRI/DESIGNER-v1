@@ -7,7 +7,7 @@ import matlab.engine
 
 dwd = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(dwd, 'utils'))
-import mpdenoise as mp
+import mpdenoise as mp #pylint: disable=import-error
 
 def usage(cmdline): #pylint: disable=unused-variable
     from mrtrix3 import app #pylint: disable=no-name-in-module, import-outside-toplevel
@@ -153,7 +153,7 @@ def execute(): #pylint: disable=unused-variable
     grad = dwi_header.keyval()['dw_scheme']
     grad = [ line for line in grad ]
     grad = [ [ float(f) for f in line ] for line in grad ]
-    stride = dwi_header.strides()
+    #stride = dwi_header.strides()
     num_volumes = 1
     if len(dwi_size) == 4:
         num_volumes = dwi_size[3]
@@ -189,17 +189,19 @@ def execute(): #pylint: disable=unused-variable
         nii = ni.load('tmp_dwi.nii')
         
         dwi = np.array(nii.dataobj)
-        sx,sy,sz,N = np.shape(dwi)
+        #sx,sy,sz,N = np.shape(dwi)
 
         print('...denoising...')
-        Signal, Sigma, Npars = mp.denoise(dwi, M=125, kernel=[7,7,7])
+        Signal, Sigma, _ = mp.denoise(dwi, M=125, kernel=[7,7,7])
         Sigma[np.isnan(Sigma)] = 0
         
         niout = ni.Nifti1Image(Signal, nii.affine, nii.header)
+        niout.header.set_data_dtype(np.float32)
         ni.save(niout, 'tmp_dwidn.nii')
         nii.header["dim"][0] = 3
         nii.header["dim"][4] = 1
         niout = ni.Nifti1Image(Sigma, nii.affine, nii.header)
+        niout.header.set_data_dtype(np.float32)
         ni.save(niout, 'tmp_sigma.nii')
         run.command('mrconvert -grad grad.txt tmp_dwidn.nii dwidn.mif')
         run.command('mrconvert tmp_sigma.nii fullnoisemap.mif')
@@ -216,6 +218,20 @@ def execute(): #pylint: disable=unused-variable
         print("...Kellner degibbsing...")
         run.command('mrdegibbs -nshifts 20 -minW 1 -maxW 3 working.mif dwigc.mif')
         run.command('mrconvert -force dwigc.mif working.mif')
+
+    # rpg gibbs artifact correction
+    if app.ARGS.rpg:
+        # convert working.mif to nii
+        run.command('mrconvert -export_grad_fsl working.bvec working.bval working.mif working.nii')
+        print("...Beginning RPG degibbsing")
+        os.chdir(designer_root)
+        eng = matlab.engine.start_matlab()
+        eng.addpath(os.path.join(DKI_root,'utils'), nargout=0)
+        eng.runrpg(app.ARGS.pf,int(app.ARGS.dim), path.to_scratch('',True), DKI_root,nargout=0)
+        eng.quit()
+        app.goto_scratch_dir()
+        #convert gibbs corrected nii to .mif
+        run.command('mrconvert -force -fslgrad working.bvec working.bval working_rpg.nii working.mif')
         
     # pre-eddy alignment for multiple input series
     if app.ARGS.prealign:
@@ -357,7 +373,7 @@ def execute(): #pylint: disable=unused-variable
         print("...Beginning Rician correction")
         bvalu = np.unique(np.around(bval, decimals=-1))
         lowbval = [i for i in bvalu if i<=np.int(app.args.rician_lowsnr)]
-        lowbinds = np.array(np.squeeze(np.where(np.isin(bval, lowbval))))
+        #lowbinds = np.array(np.squeeze(np.where(np.isin(bval, lowbval))))
         lowbvalstr = ','.join(str(i) for i in lowbval)
         run.command('dwiextract -shell ' + lowbvalstr + ' dwi.mif dwilowb.mif')
         run.command('dwidenoise -noise lowbnoisemap.mif -estimator Exp2 dwilowb.mif dwitmp.mif')

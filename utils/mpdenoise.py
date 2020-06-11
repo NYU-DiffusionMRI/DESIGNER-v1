@@ -319,6 +319,6 @@ def denoise(img, kernel=None, M=None, shrinkage=None):
     Signal, Sigma, Npars = mp.process()
     return Signal, Sigma, Npars
 
-if __name__ == "__main__":
-    denoise()
+# if __name__ == "__main__":
+#     denoise()
     

@@ -15,8 +15,8 @@ function runrpg(pf,dim,root,DKI_root)
     addpath(genpath(fullfile(DKI_root,'utils')));
 
     %% Compile mex files
-    rpg = rpgdegibbs();
-    rpg.compilefiles(fullfile(DKI_root,'utils/lib'));
+    %rpg = rpgdegibbs();
+    %rpg.compilefiles(fullfile(DKI_root,'utils/lib'));
 
     %% degibbs
 
