@@ -16,3 +16,14 @@ DESIGNER is modular and can easily be tuned to study-specific needs or requireme
 The DESIGNER pipeline has been evaluated and described in more technical detail in following publication: Ades-Aron et al. NeuroImage 183: 532-543 (2018).  
 
 Don’t hesitate to reach out to Jelle.Veraart@nyulangone.org or Benjamin.Ades-Aron@nyulangone.org for feedback, suggestions, questions, or comments.
+
+# Recommended Usage 
+Let us assume we are in a directory that contains 3 diffusion datasets, dwi1.nii.gz, dwi2.nii.gz, and dwi3.nii.gz. Designer will automatically look for corresponding gradient files in the same directory in FSL format (dwi1.bvec, dwi1.bval, dwi2.bvec, dwi2.bval, dwi3.bvec, dwi3.bval). Reccomended usage is as follows (for 6/8 partial fourier data, in the -y (AP) direction):
+
+designer dwi1.nii.gz,dwi2.nii.gz,dwi3.nii.gz designer_params \
+-denoise \
+-rpg -pf 6/8 -dim 2 \
+-rician \
+-mask \
+-eddy -rpe_pair dwi_rpe.nii.gz -pe_dir AP \
+-DTIparams -DKIparams -WMTIparams 
