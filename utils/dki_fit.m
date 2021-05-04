@@ -69,11 +69,11 @@ function [b0, dt] = dki_fit(dwi, grad, mask, constraints, outliers, maxbval)
     dwi = dwi(:,:,:,list);
     grad = grad(list, :);
     
-    
    
     %% parameter checks 
     dwi = double(dwi);
     dwi(dwi<=0)=eps;
+    
     [x, y, z, ndwis] = size(dwi);
     if ~exist('grad','var') || size(grad,1) ~= ndwis || size(grad,2) ~= 4
         error('');
@@ -88,6 +88,7 @@ function [b0, dt] = dki_fit(dwi, grad, mask, constraints, outliers, maxbval)
     if ~exist('mask','var') || isempty(mask)
         mask = true(x, y, z);
     end
+    mask = true(size(mask));
     
     if ~exist('outliers', 'var') || isempty(outliers)
         outliers = false(size(dwi));
@@ -97,7 +98,8 @@ function [b0, dt] = dki_fit(dwi, grad, mask, constraints, outliers, maxbval)
     
     dwi = vectorize(dwi, mask);
     outliers = vectorize(outliers, mask);
-   
+    
+    
     if exist('constraints', 'var') && ~isempty(constraints) && numel(constraints)==3
     else
         constraints = [0 1 0];
@@ -146,15 +148,16 @@ function [b0, dt] = dki_fit(dwi, grad, mask, constraints, outliers, maxbval)
             end
         end
     else
-        parfor i = 1:nvoxels
+        for i = 1:nvoxels
             in_ = outliers(:, i) == 0;
             b_ = b(in_, :);
             if isempty(b_) || cond(b(in_, :))>1e15
-                dt(:, i) = NaN
+                dt(:, i) = NaN;
             else
                 wi = w(:,i); Wi = diag(wi(in_)); 
                 logdwii = log(dwi(in_,i));
                 dt(:,i) = (Wi*b_)\(Wi*logdwii);
+
             end
         end
     end

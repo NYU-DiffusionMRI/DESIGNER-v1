@@ -1,4 +1,4 @@
-function [fa, md, rd, ad, fe, mk,  rk, ak] = dki_parameters(dt, mask)
+function [fa, md, rd, ad, fe, mk,  rk, ak, l1, l2, l3] = dki_parameters(dt, mask)
     % diffusion and kurtosis tensor parameter calculation
     %
     % -----------------------------------------------------------------------------------
@@ -126,6 +126,9 @@ mk = vectorize(mk, mask);
 ak = vectorize(ak, mask);
 rk = vectorize(rk, mask);
 fe = vectorize(e1, mask);
+l1 = vectorize(l1, mask);
+l2 = vectorize(l2, mask);
+l3 = vectorize(l3, mask);
 
 end
 

@@ -17,7 +17,7 @@ function tensorfitting(root,outdir,detectoutliers,cumulants,dti,dki,wmti,fitcons
     bveclist = dir(fullfile(root,'dwi_designer.bvec')); bvecdir = bveclist.name;
     bval = textread(fullfile(root,bvaldir)); bval = bval(:, 1:ndwis)'; bval = bval./1000;
     bvec = textread(fullfile(root,bvecdir)); bvec = bvec(:, 1:ndwis)';
-    maxbval = max(bval);
+    maxbval = 3;
 
     detectoutliers = logical(detectoutliers);
     dti = logical(dti);
@@ -76,7 +76,7 @@ function tensorfitting(root,outdir,detectoutliers,cumulants,dti,dki,wmti,fitcons
     end
 
     disp('...getting DTI and DKI params')
-    [fa, md, rd, ad, fe, mk, rk, ak] = dki_parameters(dt,mask);
+    [fa, md, rd, ad, fe, mk, rk, ak, l1, l2, l3] = dki_parameters(dt,mask);
     fe = cat(4,fa.*fe(:,:,:,1),fa.*fe(:,:,:,2),fa.*fe(:,:,:,3));
     
     if dti
@@ -91,6 +91,9 @@ function tensorfitting(root,outdir,detectoutliers,cumulants,dti,dki,wmti,fitcons
         niftiwrite(md, fullfile(outdir,'md.nii'), info);
         niftiwrite(rd, fullfile(outdir,'rd.nii'), info);
         niftiwrite(ad, fullfile(outdir,'ad.nii'), info);
+        niftiwrite(l1, fullfile(outdir,'l1.nii'), info);
+        niftiwrite(l2, fullfile(outdir,'l2.nii'), info);
+        niftiwrite(l3, fullfile(outdir,'l3.nii'), info);
         info.DisplayIntensityRange = [0 0];
         niftiwrite(b0, fullfile(outdir,'b0.nii'), info);
         info.ImageSize = cat(2, info.ImageSize, 3);

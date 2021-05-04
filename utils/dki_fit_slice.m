@@ -96,9 +96,8 @@ function [B0, DT] = dki_fit_slice(dwi, grad, mask, constraints, outliers, maxbva
     end
     
     for slice = 1:size(dwi,3)
-    
-        dwi = vectorize(dwi(:,:,slice,:), mask(:,:,slice));
-        outliers = vectorize(outliers, mask);
+        dwi_ = vectorize(dwi(:,:,slice,:), mask(:,:,slice));
+        outliers_ = vectorize(outliers(:,:,slice,:), mask(:,:,slice));
 
         if exist('constraints', 'var') && ~isempty(constraints) && numel(constraints)==3
         else
@@ -116,10 +115,11 @@ function [B0, DT] = dki_fit_slice(dwi, grad, mask, constraints, outliers, maxbva
         b = [bS, -bval(:, ones(1, 6)).*bD, (bval(:, ones(1, 15)).^2/6).*bW];
 
         % unconstrained LLS fit
-        dt = b\log(dwi);
+        dt = b\log(dwi_);
         w = exp(b*dt);
 
-        nvoxels = size(dwi,2);
+        nvoxels = size(dwi_,2);
+        fprintf('looping over %d voxels in slice %d \n',nvoxels,slice)
 
         % WLLS fit initialized with LLS   
         if any(constraints) 
@@ -137,24 +137,24 @@ function [B0, DT] = dki_fit_slice(dwi, grad, mask, constraints, outliers, maxbva
             end
             d = zeros([1, size(C, 1)]);
             options = optimset('Display', 'off', 'Algorithm', 'interior-point', 'MaxIter', 22000, 'TolCon', 1e-12, 'TolFun', 1e-12, 'TolX', 1e-12, 'MaxFunEvals', 220000);
-            parfor i = 1:nvoxels
+            for i = 1:nvoxels
                 try
-                    in_ = outliers(:, i) == 0;
-                    wi = w(:,i); Wi = diag(wi(in_));             
-                    dt(:, i) = lsqlin(Wi*b(in_, :),Wi*log(dwi(in_,i)),-C, d, [],[],[],[],[],options);
+                    in_ = outliers_(:, i) == 0;
+                    wi = w(:,i); Wi = diag(wi(in_));
+                    dt(:, i) = lsqlin(Wi*b(in_, :),Wi*log(dwi_(in_,i)),-C, d, [],[],[],[],[],options);
                 catch
                     dt(:, i) = 0;
                 end
             end
         else
-            parfor i = 1:nvoxels
-                in_ = outliers(:, i) == 0;
+            for i = 1:nvoxels
+                in_ = outliers_(:, i) == 0;
                 b_ = b(in_, :);
                 if isempty(b_) || cond(b(in_, :))>1e15
                     dt(:, i) = NaN
                 else
                     wi = w(:,i); Wi = diag(wi(in_)); 
-                    logdwii = log(dwi(in_,i));
+                    logdwii = log(dwi_(in_,i));
                     dt(:,i) = (Wi*b_)\(Wi*logdwii);
                 end
             end
@@ -164,8 +164,8 @@ function [B0, DT] = dki_fit_slice(dwi, grad, mask, constraints, outliers, maxbva
         dt_ = dt(2:22, :);
         D_apprSq = 1./(sum(dt_([1 4 6],:),1)/3).^2;
         dt_(7:21,:) = dt_(7:21,:) .* D_apprSq(ones(15,1),:);
-        b0_ = vectorize(b0_, mask);
-        dt_ = vectorize(dt_, mask);
+        b0_ = vectorize(b0_, mask(:,:,slice));
+        dt_ = vectorize(dt_, mask(:,:,slice));
     end
     B0(:,:,slice,:) = b0_;
     DT(:,:,slice,:) = dt_;
