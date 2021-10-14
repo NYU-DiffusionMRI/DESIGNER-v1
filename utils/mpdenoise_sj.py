@@ -60,36 +60,77 @@ import scipy.linalg
 #from jax import jit
 
 class MP(object):
-    def __init__(self, dwi, kernel, M, shrinkage):
-        self.dwi = dwi
+    def __init__(self, dwi, kernel, patchtype, patchsize, shrinkage, algorithm):
+        if dwi.ndim > 4:
+            self.coil = True
+        else:
+            self.coil = False
 
         if shrinkage is None:
-            self.shrink = 'frobenius'
+            self.shrink = 'threshold'
         else:
             self.shrink = shrinkage
 
+        if algorithm is None:
+            self.algo = 'jespersen'
+        else:
+            self.algo = algorithm
+
         if kernel is None:
-            kernel = np.array([5,5,5])
+            nvols = dwi.shape[-1]
+            p = np.arange(3, nvols, 2)
+            pf = np.where(p**3 >= nvols)[0][0]
+            defaultKernel = p[pf]
+            kernel = np.array([defaultKernel,defaultKernel,defaultKernel])
         else:
             kernel = np.array(kernel)
-
-        if M is None:
-            self.nlpatchsize = None
-        else:
-            self.nlpatchsize = M
 
         kernel = kernel+np.mod(kernel,2)-1
         self.kernel = kernel.astype(int)
         k = self.kernel // 2
+        
+        if patchtype is None:
+            self.patchtype = 'box'
+        else:
+            self.patchtype = patchtype
 
-        pwidth = (k[0],k[0]), (k[1],k[1]), (k[2],k[2]), (0,0)
+        if patchsize is None:
+            self.patchsize = np.prod(kernel)
+        else:
+            self.patchsize = patchsize
+
+        if self.patchtype == 'box':
+            self.pos_distances = None
+        elif self.patchtype == 'nonlocal':
+            if self.patchsize >= np.prod(kernel):
+                print('Warning: selecting sane default nonlocal patch size')
+                self.patchsize = np.floor(np.prod(kernel) - 0.2*np.prod(kernel))
+                if self.patchsize <= dwi.shape[-1]:
+                    self.patchsize = dwi.shape[-1] + 1
+                self.patchsize = self.patchsize.astype(int)
+            pi, pj, pk = np.where(np.ones((self.kernel)))
+            patchcoords = np.vstack((pi,pj,pk)).T
+            self.pos_distances = np.sum((patchcoords - k)**2, axis=1)
+                    
+        if self.coil:
+            pwidth = (k[0],k[0]), (k[1],k[1]), (k[2],k[2]), (0,0), (0,0)
+        else:
+            pwidth = (k[0],k[0]), (k[1],k[1]), (k[2],k[2]), (0,0)
         self.pwidth = pwidth
-        self.dwi_tmp = np.pad(self.dwi, pad_width=pwidth, mode='wrap')
+        self.dwi = np.pad(dwi, pad_width=pwidth, mode='wrap')
+
+        print('Denoising data with parameters:')
+        print('kernel     = ' + str(self.kernel))
+        print('patch type = ' + str(self.patchtype))
+        print('patch size = ' + str(self.patchsize))
+        print('shrinkage  = ' + str(self.shrink))
+        print('algorithm  = ' + str(self.algo))
+        print('coil level = ' + str(self.coil))
             
     def box_patch(self, dwi, coords):
         # extracts a patch of size kx x ky x kz from the padded input at specified coords
         k = self.kernel // 2
-        X = dwi[coords[0]-k[0]:coords[0]+k[0]+1, coords[1]-k[1]:coords[1]+k[1]+1, coords[2]-k[2]:coords[2]+k[2]+1, :]
+        X = dwi[coords[0]-k[0]:coords[0]+k[0]+1, coords[1]-k[1]:coords[1]+k[1]+1, coords[2]-k[2]:coords[2]+k[2]+1, ...]
         return X
 
     def normalize(self, im):
@@ -97,24 +138,25 @@ class MP(object):
         return im
 
     def refine(self, X_tmp, coords):
-        k = self.kernel // 2
+        refval = X_tmp[np.prod(self.kernel)//2,...]
+        if self.coil:
+            int_distances = 1/(X_tmp.shape[-1]*X_tmp.shape[-2]) * np.sum((X_tmp - refval)**2, axis=(1,2))
+        else:
+            int_distances = 1/(X_tmp.shape[-1]) * np.sum((X_tmp - refval)**2, axis=1)
 
-        refval = X_tmp[k[0],k[1],k[2],:]
-        ref_ = X_tmp.reshape((np.prod(self.kernel), X_tmp.shape[3]))
-        int_distances = 1/X_tmp.shape[3] * np.sum((ref_ - refval)**2, axis=1)
-        pos_distances = np.sum((self.patchcoords - k)**2, axis=1)
+        wdists = (self.pos_distances * int_distances)
+        iidx = bn.argpartition(wdists, self.patchsize)[:self.patchsize]
+        minind = np.argmin(self.pos_distances[iidx])
 
-        wdists = (pos_distances * int_distances)
-        iidx = bn.argpartition(wdists, self.nlpatchsize)[:self.nlpatchsize]
-        minind = np.argmin(pos_distances[iidx])
-
-        # if (coords == np.array([43+k[0], 38+k[1], 3+k[2]])).all():
+        # debug = True
+        # if debug:
         #     print('sup')
-        #     sx, sy, sz, N = self.dwi_tmp.shape
+        #     k = self.kernel // 2
+        #     sx, sy, sz, N = self.dwi.shape
         #     mask = np.zeros((sx,sy,sz))
         #     mask[coords[0]-k[0]:coords[0]+k[0]+1, coords[1]-k[1]:coords[1]+k[1]+1, coords[2]-k[2]:coords[2]+k[2]+1] = 1
-        #     iidx = bn.argpartition(wdists, self.nlpatchsize)[:self.nlpatchsize]
-        #     pos_im = np.reshape(pos_distances,self.kernel)
+        #     iidx = bn.argpartition(wdists, self.patchsize)[:self.patchsize]
+        #     pos_im = np.reshape(self.pos_distances,self.kernel)
         #     int_im = np.reshape(int_distances,self.kernel)
         #     w_im = np.reshape(wdists,self.kernel)
                 
@@ -125,33 +167,33 @@ class MP(object):
         #     wmask = mask.copy()
         #     wmask[coords[0]-k[0]:coords[0]+k[0]+1, coords[1]-k[1]:coords[1]+k[1]+1, coords[2]-k[2]:coords[2]+k[2]+1] = w_im
 
-        #     minw = np.partition(wdists, self.nlpatchsize)[self.nlpatchsize]
+        #     minw = np.partition(wdists, self.patchsize)[self.patchsize]
         #     omask = wmask.copy()
         #     omask[wmask>minw] = 1
 
         #     import matplotlib.pyplot as plt
-        #     plt.imshow(np.squeeze(self.dwi_tmp[:,:,coords[2],55]))
-        #     alphas = np.squeeze(mask[:,:,coords[2]])
+        #     plt.imshow(np.squeeze(self.dwi[coords[0],:,:,55]))
+        #     alphas = np.squeeze(mask[coords[0],:,:])
         #     plt.imshow(alphas, alpha=0.5*alphas)
         #     plt.show()
 
-        #     plt.imshow(np.squeeze(self.dwi_tmp[:,:,coords[2],55]))
-        #     pd = np.squeeze(pmask[:,:,coords[2]])
+        #     plt.imshow(np.squeeze(self.dwi[coords[0],:,:,55]))
+        #     pd = np.squeeze(pmask[coords[0],:,:])
         #     plt.imshow(1-pd, alpha=0.75*alphas)
         #     plt.show()
 
-        #     plt.imshow(np.squeeze(self.dwi_tmp[:,:,coords[2],55]))
-        #     id = np.squeeze(imask[:,:,coords[2]])
+        #     plt.imshow(np.squeeze(self.dwi[coords[0],:,:,55]))
+        #     id = np.squeeze(imask[coords[0],:,:])
         #     plt.imshow(1-id, alpha=0.75*alphas)
         #     plt.show()
 
-        #     plt.imshow(np.squeeze(self.dwi_tmp[:,:,coords[2],55]))
-        #     wd = np.squeeze(wmask[:,:,coords[2]])
+        #     plt.imshow(np.squeeze(self.dwi[coords[0],:,:,55]))
+        #     wd = np.squeeze(wmask[coords[0],:,:])
         #     plt.imshow(1-wd, alpha=0.75*alphas)
         #     plt.show()
 
-        #     plt.imshow(np.squeeze(self.dwi_tmp[:,:,coords[2],55]))
-        #     od = np.squeeze(omask[:,:,coords[2]])
+        #     plt.imshow(np.squeeze(self.dwi[coords[0],:,:,55]))
+        #     od = np.squeeze(omask[coords[0],:,:])
         #     plt.imshow(1-od,alpha=alphas*(1-od))
         #     plt.show()
 
@@ -194,111 +236,113 @@ class MP(object):
     #     u,vals,v = jsp.linalg.svd(X, full_matrices=False, compute_uv=True, check_finite=False, overwrite_a=True)
     #     return u,vals,v
     
-    def denoise(self, coords, M, N, centering):
-        X = self.box_patch(self.dwi_tmp, coords)
-        R = np.min((M, N)).astype(int)
+    def denoise(self, coords):
+        X = self.box_patch(self.dwi, coords)
 
-        if self.nlpatchsize:
-            Xn = self.box_patch(self.dwi_norm, coords)
-            nonlocalinds, minind = self.refine(Xn, coords)
-            X = X.reshape((np.product(self.kernel), N))[nonlocalinds,:]
+        if self.coil:
+            X = np.reshape(X,(np.prod(self.kernel), self.dwi.shape[-2], self.dwi.shape[-1]))
         else:
-            X = X.reshape((M, N))
-            minind = M//2
+            X = np.reshape(X,(np.prod(self.kernel), self.dwi.shape[-1]))
+
+        if self.patchtype == 'nonlocal':
+            Xn = self.normalize(X)
+            nonlocalinds, minind = self.refine(Xn, coords)
+            X = X[nonlocalinds,...]
+        else:
+            minind = np.prod(self.kernel)//2
+
+        if self.coil:
+            X = X.reshape(self.patchsize*self.dwi.shape[-2], self.dwi.shape[-1])
         
-        flip = False
+        M = X.shape[0]
+        N = X.shape[1]
+        Mp = np.min((M,N))
+        Np = np.max((M,N))
+        
         if M < N:  
-            flip = True
-            X = X.T
-            M = X.shape[0]
-            N = X.shape[1]
+            X = np.conj(X).T
         
-        if centering:
-            colmean = np.mean(X, axis=0)
-            X = X - np.tile(colmean, (M, 1))
+        #try:
+        #u,vals,v = self.svdfunc(X)
+        u,vals,v = scipy.linalg.svd(X, full_matrices=False)
+        vals = (vals**2).astype('float32')
+
+        order = np.argsort(vals)[::-1]
+        u = u[:,order]
+        v = v[:,order]
+        vals = vals[order]
+
+        tn = 0
+        ptn = np.arange(0,Mp-tn).T
+        p = np.arange(0,Mp).T
+
+        csum = np.cumsum(vals[::-1])[::-1]
+        if self.algo == 'veraart':
+            sigmasq_1 = csum / ((Mp-p)*Np)
+            rangeMP = 4*np.sqrt((Mp-ptn)*(Np-tn))
+        elif self.algo == 'cordero-grande':
+            sigmasq_1 = csum / ((Mp-p)*(Np-p))
+            rangeMP = 4*np.sqrt((Mp-ptn)*(Np-ptn))
+        elif self.algo == 'jespersen':
+            sigmasq_1 = csum / ((Mp-p)*(Np-p))
+            rangeMP = 4*np.sqrt((Np-tn)*(Mp))
+
+        rangeData = vals[:Mp-tn] - vals[Mp-1]
+        sigmasq_2 = rangeData / rangeMP
+
+        t = np.where(sigmasq_2 < sigmasq_1[:Mp-tn])
+        if t[0].any():
+            t = t[0][0]
+            pass
         
-        try:
-            #u,vals,v = self.svdfunc(X)
-            u,vals,v = scipy.linalg.svd(X, full_matrices=False)
-            vals = vals.astype('float64')
-            vals_orig = vals.copy()
-            vals = (vals**2)/N
-
-            csum = np.cumsum(vals[R-centering-1:None:-1])
-            sigmasq_1 = csum[R-centering-1:None:-1]/range(R-centering, 0, -1)
-
-            gamma = (M-np.array(range(0, R-centering)))/N
-            rangeMP = 4*np.sqrt(gamma[:])
-            rangeData = vals[0:R-centering]-vals[R-centering-1]
-            sigmasq_2 = rangeData/rangeMP
-
-            t = np.where(sigmasq_2 < sigmasq_1)
-            if t[0].any():
-                t = t[0][0]
-                pass
-            
-            sigma = np.sqrt(sigmasq_1[t])
-            
-            if self.shrink == 'frobenius':
-                newvals = vals_orig/(np.sqrt(N)*sigma)
-                vals_frobnorm = (np.sqrt(N)*sigma) * self.eig_shrink(newvals, gamma[0])
-                s = np.matrix(u) * vals_frobnorm * np.matrix(v) 
-            else:
-                vals[t:R] = 0
-                s = np.matrix(u) * np.diag(np.sqrt(N*vals)) * np.matrix(v)
-
-            if flip:
-                s = s.T
-                M = X.shape[1]
-                N = X.shape[0] 
-            if centering:
-                s = s + np.tile(colmean, (M, 1))
-            signal = np.squeeze(s[minind, :])
-
-        except:
-            #print('Warning: no MP fit')
-            sigma = np.nan
-            t = R-1
-            if flip:
-                X = X.T
-                M = X.shape[1]
-                N = X.shape[0]
-            signal = np.squeeze(X[minind, :])
-            
+        sigma = np.sqrt(sigmasq_1[t])
         npars = t
+        if self.shrink == 'threshold':
+            vals[t:] = 0
+            s = np.matrix(u) * np.diag(np.sqrt(vals)) * np.matrix(v)
+        else:
+            vals_norm = np.sqrt(vals)/(np.sqrt(Mp)*sigma)
+            vals_frobnorm = (np.sqrt(Mp)*sigma) * self.eig_shrink(vals_norm, Np/Mp)
+            s = np.matrix(u) * vals_frobnorm * np.matrix(v) 
+        
+        if M<N:
+            s = np.conj(s).T
+
+        # except:
+        #     #print('Warning: no MP fit')
+        #     s = X
+        #     sigma = np.nan
+        #     npars = np.nan
+        #     if M<N:
+        #         s = np.conj(s).T 
+
+        if self.coil:
+            signal = np.squeeze(s[minind::self.dwi.shape[-2], :])
+        else:    
+            signal = np.squeeze(s[minind, :]) 
+
         return signal, sigma, npars
 
     def process(self):
-        sx, sy, sz, N = self.dwi_tmp.shape
+        sx, sy, sz, N = self.dwi.shape
         mask = np.ones((sx,sy,sz))
 
         x, y, z = self.padded_sampling(mask)
         xsize = int(x.size)
         coords = np.vstack((x,y,z))
         
-        if self.nlpatchsize:
-            M = self.nlpatchsize
-            pi, pj, pk = np.where(np.ones((self.kernel)))
-            self.patchcoords = np.vstack((pi,pj,pk)).T
-            self.dwi_norm = self.normalize(self.dwi_tmp)
-        else:
-            M = np.prod(self.kernel).astype(int)
-        #self.svdfunc = jit(self.jsvd)
-        
-        #print('...denoising')
-        centering = 0
         inputs = tqdm(range(0, xsize))
         num_cores = multiprocessing.cpu_count()
         
-        # # # parallel
+        # # parallel
         signal, sigma, npars = zip(*Parallel(n_jobs=num_cores, prefer='processes')\
-            (delayed(self.denoise)(coords[:,i], M, N, centering) for i in inputs))
+           (delayed(self.denoise)(coords[:,i]) for i in inputs))
         
     #   #  serial
-    #     k = self.kernel // 2
-    #     #for t in inputs:
-    #     crds = np.array([43+k[0], 38+k[1], 3+k[2]])
-    #     a, b, c = self.denoise(crds, M, N, centering=centering)
+        # k = self.kernel // 2
+        # #for t in inputs:
+        # crds = np.array([48+k[0], 38+k[1], 25+k[2]])
+        # a, b, c = self.denoise(crds)
            
         # reconstruct original data matrix
         Sigma = np.zeros((sx, sy, sz))
@@ -314,8 +358,8 @@ class MP(object):
         Sigma = self.unpad(Sigma, self.pwidth[:][:-1])
         return Signal, Sigma, Npars
 
-def denoise(img, kernel=None, M=None, shrinkage=None):
-    mp = MP(img, kernel, M, shrinkage)
+def denoise(img, kernel=None, patchtype=None, patchsize=None, shrinkage=None, algorithm=None):
+    mp = MP(img, kernel, patchtype, patchsize, shrinkage, algorithm)
     Signal, Sigma, Npars = mp.process()
     return Signal, Sigma, Npars
 

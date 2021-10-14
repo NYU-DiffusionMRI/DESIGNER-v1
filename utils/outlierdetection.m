@@ -11,7 +11,7 @@ function akc_out = outlierdetection(dt,mask)
     nblocks = 10;
     for i=1:nblocks
         akc = AKC(dt, dir((N/nblocks*(i-1))+1:N/nblocks*i, :)); %#ok<NODEF>
-        akc_out = single(any(akc < -2 | akc > 10, 1));
+        akc_out = single(any(akc < -1 | akc > 10, 1));
     end
     %[akc, adc] = AKC(dt, dir);
     %akc_out = single(any(akc < -2 | akc > 10, 1));

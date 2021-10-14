@@ -148,7 +148,7 @@ function [b0, dt] = dki_fit(dwi, grad, mask, constraints, outliers, maxbval)
             end
         end
     else
-        for i = 1:nvoxels
+        parfor i = 1:nvoxels
             in_ = outliers(:, i) == 0;
             b_ = b(in_, :);
             if isempty(b_) || cond(b(in_, :))>1e15

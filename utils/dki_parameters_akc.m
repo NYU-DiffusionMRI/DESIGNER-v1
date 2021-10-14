@@ -98,18 +98,24 @@ fa = sqrt(1/2).*sqrt((l1-l2).^2+(l2-l3).^2+(l3-l1).^2)./sqrt(l1.^2+l2.^2+l3.^2);
 %% DKI parameters
 dirs = get256dirs();
 akc = AKC(dt, dirs);
+akc(akc < -2 | akc > 10) = NaN;
+akc_f = fillmissing(akc,'movmedian',5);
 
-mk = mean(akc);
+mk = mean(akc_f);
 ak = zeros([1, size(e1,2)]);
 rk = zeros([1, size(e1,2)]);
 
 parfor i = 1:nvoxels
     dirs = [e1(:,i), -e1(:,i)]';
     akc = AKC(dt(:,i), dirs);
-    ak(i) = mean(akc);
+    akc(akc < -2 | akc > 10) = NaN;
+    akc_f = fillmissing(akc,'movmedian',5);
+    ak(i) = mean(akc_f);
     dirs = radialsampling(e1(:,i), 256)';
     akc = AKC(dt(:,i), dirs);
-    rk(i) = mean(akc);
+    akc(akc < -2 | akc > 10) = NaN;
+    akc_f = fillmissing(akc,'movmedian',5);
+    rk(i) = mean(akc_f);
 end
 
                    

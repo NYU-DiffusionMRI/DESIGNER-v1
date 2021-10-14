@@ -1,4 +1,4 @@
-function [b0, dt, md, rd, ad, fa] = dti_fit(dwi, grad, mask)
+function [b0, dt, md, rd, ad, fa, fe] = dti_fit(dwi, grad, mask)
 
     %% check grad order
     bval = grad(:, 4);
@@ -34,7 +34,7 @@ function [b0, dt, md, rd, ad, fa] = dti_fit(dwi, grad, mask)
     bS = ones(ndwis, 1);
     bD = D_cnt(ones(ndwis, 1), :).*grad(:,D_ind(:, 1)).*grad(:,D_ind(:, 2));
     
-    b = [bS, -bval(:, ones(1, 6)).*bD, (bval(:, ones(1, 15)).^2/6).*bW];
+    b = [bS, -bval(:, ones(1, 6)).*bD];
 
     % unconstrained LLS fit
     dt = b\log(dwi);
@@ -52,13 +52,12 @@ function [b0, dt, md, rd, ad, fa] = dti_fit(dwi, grad, mask)
     b0 = exp(dt(1,:));
     dt = dt(2:7, :);
     b0 = vectorize(b0, mask);
-    dt = vectorize(dt, mask);
     
     DT = reshape([dt(1,:); dt(2,:); dt(3,:);...
         dt(2,:); dt(4,:); dt(5,:);...
-        dt(3,:); dt(5,:); dt(6,:);],[3,3,size(dt,2)]);
+        dt(3,:); dt(5,:); dt(6,:)],[3,3,size(dt,2)]);
 
-    for i=1:size(dt,2)
+    parfor i=1:size(dt,2)
         [v,l] = eig(DT(:,:,i));
         l = diag(l); 
         [l, idx] = sort(l,'descend'); 
@@ -71,11 +70,15 @@ function [b0, dt, md, rd, ad, fa] = dti_fit(dwi, grad, mask)
         l2(i)=abs(l(2));
         l3(i)=abs(l(3));
     end
+    dt = vectorize(dt, mask);
     md = vectorize((l1+l2+l3)./3, mask);
     rd = vectorize((l2+l3)./2, mask);
     ad = vectorize(l1, mask);
     fa = vectorize(sqrt(1/2).*sqrt((l1-l2).^2+(l2-l3).^2+(l3-l1).^2)./sqrt(l1.^2+l2.^2+l3.^2), mask);
-    
+    for i = 1:3
+        ev(:,:,:,i) = vectorize(v1(:,i)', mask);
+    end
+    fe = cat(4,fa.*ev(:,:,:,1),fa.*ev(:,:,:,2),fa.*ev(:,:,:,3));
 
 end
 

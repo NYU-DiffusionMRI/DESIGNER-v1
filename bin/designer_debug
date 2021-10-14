@@ -71,10 +71,9 @@ def usage(cmdline): #pylint: disable=unused-variable
     options.add_argument('-outliers',action='store_true',help='Perform IRWLLS outlier detection')
     options.add_argument('-fslbvec',metavar=('<bvecs>'),help='specify bvec path if path is different from the path to the dwi or the file has an unusual extention')
     options.add_argument('-fslbval',metavar=('<bvals>'),help='specify bval path if path is different from the path to the dwi or the file has an unusual extention')
-    mp_options = cmdline.add_argument_group('Options for specifying mp parameters')
-    mp_options.add_argument('-shrinkage',metavar=('<shrink>'),help='specify shrinkage type. Options are "threshold" or "frob"', default='threshold')
-    mp_options.add_argument('-patchtype',metavar=('<ptype>'),help='specify patchtype. Options are "nonlocal" or "box"', default='nonlocal')
-    mp_options.add_argument('-algorithm',metavar=('<alg>'),help='specify MP algorithm. Options are "veraart","cordero-grande","jespersen"',default='cordero-grande')
+    options.add_argument('-shrinkage',metavar=('<shrink>'),help='test')
+    options.add_argument('-patchtype',metavar=('<ptype>'),help='test')
+    options.add_argument('-algorithm',metavar=('<alg>'),help='test')
     rpe_options = cmdline.add_argument_group('Options for specifying the acquisition phase-encoding design')
     rpe_options.add_argument('-rpe_none', action='store_true', help='Specify that no reversed phase-encoding image data is being provided; eddy will perform eddy current and motion correction only')
     rpe_options.add_argument('-rpe_pair', metavar=('<reverse PE b=0 image>'), help='Specify the reverse phase encoding image')
@@ -199,7 +198,12 @@ def execute(): #pylint: disable=unused-variable
 
         print('...denoising...')
         # nonlocal denoising, no shrinkage
-        Signal, Sigma, Nparameters = mp.denoise(dwi, patchtype=app.ARGS.patchtype, shrinkage=app.ARGS.shrinkage, algorithm=app.ARGS.algorithm)
+        if app.ARGS.patchtype == 'nonlocal':
+            kernel = [7,7,7]
+        else:
+            kernel = [5,5,5]
+
+        Signal, Sigma, Nparameters = mp.denoise(dwi, kernel=kernel, patchtype=app.ARGS.patchtype, patchsize=125, shrinkage=app.ARGS.shrinkage, algorithm=app.ARGS.algorithm)
         Sigma[np.isnan(Sigma)] = 0
         
         niout = ni.Nifti1Image(Signal, nii.affine, nii.header)
@@ -297,7 +301,7 @@ def execute(): #pylint: disable=unused-variable
                 run.command('mrconvert ' + path.from_user(app.ARGS.rpe_pair) + ' b0rpe.mif')
             run.command('mrcat -axis 3 b0pe.mif b0rpe.mif rpepair.mif')
             #run.command('dwifslpreproc -nocleanup -eddy_options " --acqp=' + acqpath + ' --index=' + idxpath + ' --repol --data_is_shelled" -rpe_pair -se_epi rpepair.mif -align_seepi -pe_dir ' + app.ARGS.pe_dir + ' working.mif dwiec.mif')
-            run.command('dwifslpreproc -nocleanup -scratch ' + path.to_scratch('',True) + '/eddy_processing' + ' -eddy_options " --cnr_maps --repol --data_is_shelled" -rpe_pair -se_epi rpepair.mif -align_seepi -pe_dir ' + app.ARGS.pe_dir + ' working.mif dwiec.mif')
+            run.command('dwifslpreproc -nocleanup -eddy_options " --repol --data_is_shelled" -rpe_pair -se_epi rpepair.mif -align_seepi -pe_dir ' + app.ARGS.pe_dir + ' working.mif dwiec.mif')
         elif app.ARGS.rpe_all:
             run.command('mrconvert -export_grad_mrtrix grad.txt dwi.mif tmp.mif')
             run.command('mrconvert -grad grad.txt ' + path.from_user(app.ARGS.rpe_all) + ' dwirpe.mif')

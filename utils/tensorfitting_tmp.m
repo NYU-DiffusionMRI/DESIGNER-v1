@@ -1,4 +1,4 @@
-function tensorfitting_tmp2(root,outdir,detectoutliers,cumulants,dti,dki,wmti,fitconstraints,akc,DKIroot,fitWDKI)
+function tensorfitting_tmp(root,outdir,detectoutliers,cumulants,dti,dki,wmti,fitconstraints,akc,DKIroot,fitWDKI)
 
     addpath(genpath(DKIroot));
     
@@ -67,35 +67,42 @@ function tensorfitting_tmp2(root,outdir,detectoutliers,cumulants,dti,dki,wmti,fi
     end
 
     if akc
-        %csfmask = niftiread(fullfile(root,'tissue_seg.nii.gz'));
+        csfmask = niftiread(fullfile(root,'tissue_seg.nii.gz'));
          disp('...running AKC correction')
-        [dt,akc_out] = shCorrectDt(dt,dwi,mask,bval,bvec,10);
+        [dt,akc_out] = shCorrectDt(dt,dwi,mask,bval,bvec,5,csfmask);
         
-        info.ImageSize = info.ImageSize(1:3);
+         info.ImageSize = info.ImageSize(1:3);
         info.PixelDimensions = info.PixelDimensions(1:3);
-        info.Datatype = 'single';
         niftiwrite(akc_out, fullfile(root,'akc_out1.nii'), info);
         
         disp(['N outliers = ',num2str(sum(akc_out(:)))]);
          akc_out = outlierdetection(dt,mask);
          akc_out(isnan(akc_out)) = 0;
          disp(['N outliers = ',num2str(sum(akc_out(:)))]);
+         
+%          [dt,akc_out] = shCorrectDt(dt,dwi,mask,bval,bvec,5);
+%          disp(['N outliers = ',num2str(sum(akc_out(:)))]);
+%         [dt,akc_out] = shCorrectDt(dt,dwi,mask,bval,bvec,5);
+%         disp(['N outliers = ',num2str(sum(akc_out(:)))]);
+%         akc_out = outlierdetection(dt,mask);
+%         akc_out(isnan(akc_out)) = 0;
+%         disp(['N outliers = ',num2str(sum(akc_out(:)))]);
+
+        
+%         for v = 1:size(dt,4)
+%             dt_v = dt(:,:,:,v);
+%             dt_v(logical(akc_out)) = NaN;
+%             if verLessThan('matlab','9.2')
+%                 dt_f = fillmissing(dt_v,'linear');
+%             else
+%                 dt_f = fillmissing(dt_v,'movmedian',5);
+%             end
+%             dt(:,:,:,v) = dt_f;
+%         end
+        
         info.ImageSize = info.ImageSize(1:3);
         info.PixelDimensions = info.PixelDimensions(1:3);
         niftiwrite(akc_out, fullfile(root,'akc_out2.nii'), info);
-        
-        [dt,akc_out] = shCorrectDt(dt,dwi,mask,bval,bvec,10);
-
-         akc_out = outlierdetection(dt,mask);
-         akc_out(isnan(akc_out)) = 0;
-         disp(['N outliers = ',num2str(sum(akc_out(:)))]);
-        info.ImageSize = info.ImageSize(1:3);
-        info.PixelDimensions = info.PixelDimensions(1:3);
-        niftiwrite(akc_out, fullfile(root,'akc_out3.nii'), info);
-         
-
-        
-  
     end
 
     if cumulants
@@ -189,30 +196,33 @@ function tensorfitting_tmp2(root,outdir,detectoutliers,cumulants,dti,dki,wmti,fi
     end
     
     if fitWDKI
-        disp('...getting W params')
-        [fa, md, rd, ad, fe, mw,  rw, aw] = dki_parameters(dt,mask);
-        fe = cat(4,fa.*fe(:,:,:,1),fa.*fe(:,:,:,2),fa.*fe(:,:,:,3));
-        disp('...saving DWI params')
+        disp('...getting axially symmetric W params')
+        woutdir = fullfile(outdir,'Wparams');
+        mkdir(woutdir)
         info.ImageSize = info.ImageSize(1:3);
         info.PixelDimensions = info.PixelDimensions(1:3);
-        info.DisplayIntensityRange = [0 3];
         info.Datatype = 'double';
-        niftiwrite(mw, fullfile(outdir,'mw.nii'), info);
-        niftiwrite(rw, fullfile(outdir,'rw.nii'), info);
-        niftiwrite(aw, fullfile(outdir,'aw.nii'), info);
-        info.ImageSize = info.ImageSize(1:3);
-        info.PixelDimensions = info.PixelDimensions(1:3);
+        [b0,Dlm,Wlm,Dl,Wl,DTI_scalars,DKI_scalars,ExtraScalars] = Fit_DKI_LTE(dwi,bval,bvec, mask, 1);
         info.DisplayIntensityRange = [0 1];
-        niftiwrite(fa, fullfile(outdir,'fa_dwi.nii'), info);
+        niftiwrite(DTI_scalars.fa, fullfile(woutdir,'fa.nii'), info);
         info.DisplayIntensityRange = [0 3];
-        niftiwrite(md, fullfile(outdir,'md_dwi.nii'), info);
-        niftiwrite(rd, fullfile(outdir,'rd_dwi.nii'), info);
-        niftiwrite(ad, fullfile(outdir,'ad_dwi.nii'), info);
-
-        info.DisplayIntensityRange = [0 0];
-        info.ImageSize = cat(2, info.ImageSize, 3);
-        info.PixelDimensions = cat(2, info.PixelDimensions, NaN);
-        niftiwrite(fe, fullfile(outdir,'fe_dwi.nii'), info);     
+        niftiwrite(DTI_scalars.md, fullfile(woutdir,'md.nii'), info);
+        niftiwrite(DTI_scalars.ad_axsym, fullfile(woutdir,'ad_axsm.nii'), info);
+        niftiwrite(DTI_scalars.rd_axsym, fullfile(woutdir,'rd_axsm.nii'), info);
+        niftiwrite(DKI_scalars.mw, fullfile(woutdir,'mw.nii'), info);
+        niftiwrite(DKI_scalars.aw_axsym, fullfile(woutdir,'aw_axsm.nii'), info);
+        niftiwrite(DKI_scalars.rw_axsym, fullfile(woutdir,'rw_axsm.nii'), info);
+        niftiwrite(ExtraScalars.rd, fullfile(woutdir,'rd_exact.nii'), info);
+        niftiwrite(ExtraScalars.ad, fullfile(woutdir,'ad_exact.nii'), info);
+        niftiwrite(ExtraScalars.rd, fullfile(woutdir,'rd_exact.nii'), info);
+        niftiwrite(ExtraScalars.mk, fullfile(woutdir,'mk_exact.nii'), info);
+        niftiwrite(ExtraScalars.aw, fullfile(woutdir,'aw_exact.nii'), info);
+        niftiwrite(ExtraScalars.rw, fullfile(woutdir,'rw_exact.nii'), info);
+        niftiwrite(Wl(:,:,:,1), fullfile(woutdir,'W0.nii'), info);
+        niftiwrite(Wl(:,:,:,2), fullfile(woutdir,'W1.nii'), info);
+        niftiwrite(Wl(:,:,:,3), fullfile(woutdir,'W2.nii'), info);
+        niftiwrite(Dl(:,:,:,1), fullfile(woutdir,'D0.nii'), info);
+        niftiwrite(Dl(:,:,:,2), fullfile(woutdir,'D2.nii'), info);        
     end
 
     function [s, mask] = vectorize(S, mask)
@@ -236,47 +246,39 @@ function tensorfitting_tmp2(root,outdir,detectoutliers,cumulants,dti,dki,wmti,fi
         end
     end
 
-    function[dt,akc_out] = shCorrectDt(dt,dwi,mask,bval,bvec,nvals)
+    function[dt,akc_out] = shCorrectDt(dt,dwi,mask,bval,bvec,lmax,csfmask)
         akc_out = outlierdetection(dt,mask);
         akc_out(isnan(akc_out)) = 0;
+        [closeInds, ginds,nani] = naninds(akc_out,lmax,csfmask,dwi(:,:,:,1));
         
-        [dwi_,nanlinearinds] = naninds(akc_out,nvals,dwi);
-        for idx = 1:length(nanlinearinds)
-            thisLinearIndex = nanlinearinds(idx);
-            [x,y,z] = ind2sub(size(akc_out),thisLinearIndex);
-            dwi(x,y,z,:) = dwi_(idx,:);
+        dwitmp = dwi;
+        for i = 1:size(dwi,4)
+            dwitmp_ = dwitmp(:,:,:,i);
+            dwitmp_(logical(akc_out)) = NaN;
+            
+            dwifilled_ = fillnans(dwitmp_,closeInds,ginds,nani,csfmask);
+            %dwifilled_ = inpaint_nans3(dwitimp_);
+            
+%             dwifilled_ = fillmissing(dwitmp_,'movmean',[lmax,lmax],1);
+%             dwifilled_ = fillmissing(dwifilled_,'movmean',[lmax,lmax],3);
+%             dwifilled_ = fillmissing(dwifilled_,'movmean',[lmax,lmax],2);
+%             
+%             nanremain = isnan(dwifilled_);
+%             if sum(nanremain(:)) > 0
+%             	dwifilled_ = fillmissing(dwitmp_,'movmean',[lmax+2,lmax+2],1);
+%                 dwifilled_ = fillmissing(dwifilled_,'movmean',[lmax+2,lmax+2],3);
+%                 dwifilled_ = fillmissing(dwifilled_,'movmean',[lmax+2,lmax+2],2);
+%             end
+                
+%             lmaxi = lmax;
+%             while sum(nanremain(:)) > 0
+%                 sum(nanremain(:))
+%                 lmaxi = lmaxi + 1
+%                 dwifilled_ = fillmissing(dwifilled_,'movmean',lmaxi);
+%             end
+            %dwifilled_ = fillnans(dwitmp_,akc_out,lmax);
+            dwi(:,:,:,i) = dwifilled_;
         end
-        
-%         dwitmp = dwi;
-%         for i = 1:size(dwi,4)
-%             dwitmp_ = dwitmp(:,:,:,i);
-%             dwitmp_(logical(akc_out)) = NaN;
-%             
-%             
-%             
-%             dwifilled_ = fillnans(dwitmp_,closeInds,ginds,nani);
-%             %dwifilled_ = inpaint_nans3(dwitimp_);
-%             
-% %             dwifilled_ = fillmissing(dwitmp_,'movmean',[lmax,lmax],1);
-% %             dwifilled_ = fillmissing(dwifilled_,'movmean',[lmax,lmax],3);
-% %             dwifilled_ = fillmissing(dwifilled_,'movmean',[lmax,lmax],2);
-% %             
-% %             nanremain = isnan(dwifilled_);
-% %             if sum(nanremain(:)) > 0
-% %             	dwifilled_ = fillmissing(dwitmp_,'movmean',[lmax+2,lmax+2],1);
-% %                 dwifilled_ = fillmissing(dwifilled_,'movmean',[lmax+2,lmax+2],3);
-% %                 dwifilled_ = fillmissing(dwifilled_,'movmean',[lmax+2,lmax+2],2);
-% %             end
-%                 
-% %             lmaxi = lmax;
-% %             while sum(nanremain(:)) > 0
-% %                 sum(nanremain(:))
-% %                 lmaxi = lmaxi + 1
-% %                 dwifilled_ = fillmissing(dwifilled_,'movmean',lmaxi);
-% %             end
-%             %dwifilled_ = fillnans(dwitmp_,akc_out,lmax);
-%             dwi(:,:,:,i) = dwifilled_;
-%         end
         [~,dt_] = dki_fit(dwi,[bvec,bval],logical(akc_out),[0,0,0],[],3);
         
 %         bu = unique(bval);
@@ -325,17 +327,17 @@ function tensorfitting_tmp2(root,outdir,detectoutliers,cumulants,dti,dki,wmti,fi
         end
     end
    
-    function u = fillnans(u, nanlocations,ginds,nanLinearIndexes)
-       % seg = seg+1;
+    function u = fillnans(u, nanlocations,ginds,nanLinearIndexes,seg)
+        seg = seg+1;
         for index = 1 : size(nanlocations,1)
             thisLinearIndex = nanLinearIndexes(index);
             [x,y,z] = ind2sub(size(u), thisLinearIndex);
-            %ttype = seg(x,y,z);
+            ttype = seg(x,y,z);
             
             goodValue = 0;
             for ind = 1:size(nanlocations,2)
                 idx = nanlocations(index,ind);
-                goodValue = goodValue + u(ginds(1,idx), ginds(2,idx), ginds(3,idx));
+                goodValue = goodValue + u(ginds{ttype}(1,idx), ginds{ttype}(2,idx), ginds{ttype}(3,idx));
             end
             % Replace the bad nan value in u with the good value.
             gv = goodValue/size(nanlocations,2);
@@ -343,44 +345,38 @@ function tensorfitting_tmp2(root,outdir,detectoutliers,cumulants,dti,dki,wmti,fi
         end
     end
 
-    function [dwi_,nanLinearIndexes] = naninds(nanlocations,nvals,dwi)
+    function [indexOfClosest,ginds,nanLinearIndexes] = naninds(nanlocations,nvals,seg,b0)
         nanLinearIndexes = find(nanlocations);
-   
-        % Get the x,y,z of all other locations that are non nan and non csf.
-        kernel = 7;
-        nvals = 50;
-        k = floor(kernel/2);
-        k_ = ceil(kernel/2);
-        pinds = find(ones(kernel,kernel,kernel));
-        [pi,pj,pk] = ind2sub([kernel,kernel,kernel],pinds);
-        patchcoords = cat(2,pi,pj,pk);
-        LinearDistances = sqrt(sum((patchcoords - k_).^2, 2));
-    
-        dwi_ = zeros(length(nanLinearIndexes),size(dwi,4));
-        parfor index = 1 : length(nanLinearIndexes)
+        seg = seg + 1;
+%         csfLinearIndices = find(csfmask);
+        ginds = cell(1,max(seg(:)));
+        for m = 1:max(seg(:))
+            ttypeLinearIndexes = find(seg~=m);
+            nonNanLinearIndexes = setdiff(1:numel(nanlocations), union(nanLinearIndexes, ttypeLinearIndexes));
+            [xGood, yGood, zGood] = ind2sub(size(nanlocations), nonNanLinearIndexes);
+            ginds{m} = [xGood; yGood; zGood];
+        end
+%         nonNanLinearIndexes = setdiff(1:numel(nanlocations), union(nanLinearIndexes,csfLinearIndices));
+%         % Get the x,y,z of all other locations that are non nan and non csf.
+%         [xGood, yGood, zGood] = ind2sub(size(nanlocations), nonNanLinearIndexes);
+%         ginds = [xGood; yGood; zGood];
+
+        indexOfClosest = zeros(length(nanLinearIndexes),nvals);
+        for index = 1 : length(nanLinearIndexes)
             thisLinearIndex = nanLinearIndexes(index);
             % Get the x,y,z location
             [x,y,z] = ind2sub(size(nanlocations), thisLinearIndex);
-            if z < k_ || z > size(dwi,3)-k
-                continue
-            end
-            
-            akcpatch = reshape(logical(nanlocations(x-k:x+k,y-k:y+k,z-k:z+k)),[kernel^3,1]);
-            wval = [];
-            for w = 1:size(dwi,4)
-                patch = reshape(dwi(x-k:x+k,y-k:y+k,z-k:z+k,w),[kernel^3,1]);
-                intensities = sqrt((patch-dwi(x,y,z,w)).^2);
-                normdists = LinearDistances.^2.*intensities;
-                normdists(akcpatch) = 1E100;
-                [~,sortedIndexes] = mink(normdists,nvals);
-                wval = cat(2,wval,mean(patch(sortedIndexes),'omitnan'));
-            end
-            dwi_(index,:)= wval;
+            ttype = seg(x,y,z);
+            % Get distances of this location to all the other locations
+            distances = sqrt((x-ginds{ttype}(1,:)).^2 + (y - ginds{ttype}(2,:)).^ 2 + (z - ginds{ttype}(3,:)).^ 2);
+            intensities = sqrt((b0(x,y,z) - b0(seg==ttype)).^2);
+            [~,sortedIndexes] = mink(intensities.*distances', nvals);
+            keyboard
+            %[~, sortedIndexes] = sort(intensities.*distances, 'ascend');
+            % The closest non-nan value will be located at index sortedIndexes(1)
+            indexOfClosest(index,:) = sortedIndexes;
         end
-                   
     end
-
-
 
 end
 

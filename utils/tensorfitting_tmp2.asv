@@ -1,4 +1,4 @@
-function tensorfitting_tmp2(root,outdir,detectoutliers,cumulants,dti,dki,wmti,fitconstraints,akc,DKIroot,fitWDKI)
+function tensorfitting_tmp(root,outdir,detectoutliers,cumulants,dti,dki,wmti,fitconstraints,akc,DKIroot,fitWDKI)
 
     addpath(genpath(DKIroot));
     
@@ -67,13 +67,12 @@ function tensorfitting_tmp2(root,outdir,detectoutliers,cumulants,dti,dki,wmti,fi
     end
 
     if akc
-        %csfmask = niftiread(fullfile(root,'tissue_seg.nii.gz'));
+        csfmask = niftiread(fullfile(root,'tissue_seg.nii.gz'));
          disp('...running AKC correction')
         [dt,akc_out] = shCorrectDt(dt,dwi,mask,bval,bvec,10);
         
-        info.ImageSize = info.ImageSize(1:3);
+         info.ImageSize = info.ImageSize(1:3);
         info.PixelDimensions = info.PixelDimensions(1:3);
-        info.Datatype = 'single';
         niftiwrite(akc_out, fullfile(root,'akc_out1.nii'), info);
         
         disp(['N outliers = ',num2str(sum(akc_out(:)))]);
@@ -189,30 +188,33 @@ function tensorfitting_tmp2(root,outdir,detectoutliers,cumulants,dti,dki,wmti,fi
     end
     
     if fitWDKI
-        disp('...getting W params')
-        [fa, md, rd, ad, fe, mw,  rw, aw] = dki_parameters(dt,mask);
-        fe = cat(4,fa.*fe(:,:,:,1),fa.*fe(:,:,:,2),fa.*fe(:,:,:,3));
-        disp('...saving DWI params')
+        disp('...getting axially symmetric W params')
+        woutdir = fullfile(outdir,'Wparams');
+        mkdir(woutdir)
         info.ImageSize = info.ImageSize(1:3);
         info.PixelDimensions = info.PixelDimensions(1:3);
-        info.DisplayIntensityRange = [0 3];
         info.Datatype = 'double';
-        niftiwrite(mw, fullfile(outdir,'mw.nii'), info);
-        niftiwrite(rw, fullfile(outdir,'rw.nii'), info);
-        niftiwrite(aw, fullfile(outdir,'aw.nii'), info);
-        info.ImageSize = info.ImageSize(1:3);
-        info.PixelDimensions = info.PixelDimensions(1:3);
+        [b0,Dlm,Wlm,Dl,Wl,DTI_scalars,DKI_scalars,ExtraScalars] = Fit_DKI_LTE(dwi,bval,bvec, mask, 1);
         info.DisplayIntensityRange = [0 1];
-        niftiwrite(fa, fullfile(outdir,'fa_dwi.nii'), info);
+        niftiwrite(DTI_scalars.fa, fullfile(woutdir,'fa.nii'), info);
         info.DisplayIntensityRange = [0 3];
-        niftiwrite(md, fullfile(outdir,'md_dwi.nii'), info);
-        niftiwrite(rd, fullfile(outdir,'rd_dwi.nii'), info);
-        niftiwrite(ad, fullfile(outdir,'ad_dwi.nii'), info);
-
-        info.DisplayIntensityRange = [0 0];
-        info.ImageSize = cat(2, info.ImageSize, 3);
-        info.PixelDimensions = cat(2, info.PixelDimensions, NaN);
-        niftiwrite(fe, fullfile(outdir,'fe_dwi.nii'), info);     
+        niftiwrite(DTI_scalars.md, fullfile(woutdir,'md.nii'), info);
+        niftiwrite(DTI_scalars.ad_axsym, fullfile(woutdir,'ad_axsm.nii'), info);
+        niftiwrite(DTI_scalars.rd_axsym, fullfile(woutdir,'rd_axsm.nii'), info);
+        niftiwrite(DKI_scalars.mw, fullfile(woutdir,'mw.nii'), info);
+        niftiwrite(DKI_scalars.aw_axsym, fullfile(woutdir,'aw_axsm.nii'), info);
+        niftiwrite(DKI_scalars.rw_axsym, fullfile(woutdir,'rw_axsm.nii'), info);
+        niftiwrite(ExtraScalars.rd, fullfile(woutdir,'rd_exact.nii'), info);
+        niftiwrite(ExtraScalars.ad, fullfile(woutdir,'ad_exact.nii'), info);
+        niftiwrite(ExtraScalars.rd, fullfile(woutdir,'rd_exact.nii'), info);
+        niftiwrite(ExtraScalars.mk, fullfile(woutdir,'mk_exact.nii'), info);
+        niftiwrite(ExtraScalars.aw, fullfile(woutdir,'aw_exact.nii'), info);
+        niftiwrite(ExtraScalars.rw, fullfile(woutdir,'rw_exact.nii'), info);
+        niftiwrite(Wl(:,:,:,1), fullfile(woutdir,'W0.nii'), info);
+        niftiwrite(Wl(:,:,:,2), fullfile(woutdir,'W1.nii'), info);
+        niftiwrite(Wl(:,:,:,3), fullfile(woutdir,'W2.nii'), info);
+        niftiwrite(Dl(:,:,:,1), fullfile(woutdir,'D0.nii'), info);
+        niftiwrite(Dl(:,:,:,2), fullfile(woutdir,'D2.nii'), info);        
     end
 
     function [s, mask] = vectorize(S, mask)
@@ -371,8 +373,8 @@ function tensorfitting_tmp2(root,outdir,detectoutliers,cumulants,dti,dki,wmti,fi
                 patch = reshape(dwi(x-k:x+k,y-k:y+k,z-k:z+k,w),[kernel^3,1]);
                 intensities = sqrt((patch-dwi(x,y,z,w)).^2);
                 normdists = LinearDistances.^2.*intensities;
-                normdists(akcpatch) = 1E100;
                 [~,sortedIndexes] = mink(normdists,nvals);
+                patch(akcpatch) = NaN;
                 wval = cat(2,wval,mean(patch(sortedIndexes),'omitnan'));
             end
             dwi_(index,:)= wval;
