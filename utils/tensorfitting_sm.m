@@ -1,4 +1,4 @@
-function tensorfitting(root,outdir,detectoutliers,cumulants,dti,dki,wmti,fitconstraints,akc,DKIroot,fitWDKI,smooth)
+function tensorfitting(dwi,root,outdir,detectoutliers,cumulants,dti,dki,wmti,fitconstraints,akc,DKIroot,fitWDKI,smooth)
 
     addpath(genpath(DKIroot));
     
@@ -9,22 +9,23 @@ function tensorfitting(root,outdir,detectoutliers,cumulants,dti,dki,wmti,fitcons
 %         parpool(pc,nw);
 %     end
 
-    maskex = exist(fullfile(root,'brain_mask.nii'),'file');
+    maskex = exist(fullfile(root,'mask.nii.gz'),'file');
     if maskex == 2
-        nii = niftiread(fullfile(root,'brain_mask.nii')); mask = logical(nii);
+        nii = niftiread(fullfile(root,'mask.nii.gz')); mask = logical(nii);
     end
-    nii = niftiread(fullfile(root,'dwi_designer.nii')); dwi = double(nii);
-    info = niftiinfo(fullfile(root,'dwi_designer.nii'));
+    %nii = niftiread(fullfile(root,'dwi_designer.nii')); dwi = double(nii);
+    info = niftiinfo(fullfile(root,'data.nii'));
     ndwis = size(dwi,4); %pixdim5 = nii.hdr.dime.pixdim(5);
     if maskex == 0
         mask = logical(ones(size(dwi,1),size(dwi,2),size(dwi,3)));
     end
 
-    bvallist = dir(fullfile(root,'dwi_designer.bval')); bvaldir = bvallist.name;
-    bveclist = dir(fullfile(root,'dwi_designer.bvec')); bvecdir = bveclist.name;
+    bvallist = dir(fullfile(root,'data.bval')); bvaldir = bvallist.name;
+    bveclist = dir(fullfile(root,'data.bvec')); bvecdir = bveclist.name;
     bval = textread(fullfile(root,bvaldir)); bval = bval(:, 1:ndwis)'; bval = bval./1000;
     bvec = textread(fullfile(root,bvecdir)); bvec = bvec(:, 1:ndwis)';
     maxbval = 3;
+    
 
     detectoutliers = logical(detectoutliers);
     dti = logical(dti);
@@ -41,7 +42,15 @@ function tensorfitting(root,outdir,detectoutliers,cumulants,dti,dki,wmti,fitcons
         constraints = [0,1,0];
     end
     cumulants = logical(cumulants);
-    smooth = logical(smooth);
+    
+%     mesoset1 = dwi(:,:,:,1:23);
+%     mesoset2 = dwi(:,:,:,24:end);
+%     b01 = mesoset1(:,:,:,1);
+%     b02 = mesoset2(:,:,:,1);
+%     ratio = b01./b02;
+%     %mesoset1 = mesoset1./b01;%.*ratio;
+%     mesoset2 = mesoset2.*ratio;
+%     dwi = cat(4,mesoset1,mesoset2);
     
 
     if detectoutliers
@@ -63,28 +72,29 @@ function tensorfitting(root,outdir,detectoutliers,cumulants,dti,dki,wmti,fitcons
          [dt,dwi,akc_out] = correctDt(dt,dwi,mask,bval,bvec);
          disp(['N outliers = ',num2str(sum(akc_out(:)))]);
         
-         info.ImageSize = info.ImageSize(1:3);
-         info.PixelDimensions = info.PixelDimensions(1:3);
-         info.Datatype = 'single';
-         niftiwrite(akc_out, fullfile(outdir,'akc_out1.nii'), info);
+        info.ImageSize = info.ImageSize(1:3);
+        info.PixelDimensions = info.PixelDimensions(1:3);
+        info.Datatype = 'single';
+        niftiwrite(akc_out, fullfile(outdir,'akc_out1.nii'), info);
+        
         
          akc_out = outlierdetection(dt,mask);
          akc_out(isnan(akc_out)) = 0;
          disp(['N outliers = ',num2str(sum(akc_out(:)))]);
-         info.ImageSize = info.ImageSize(1:3);
-         info.PixelDimensions = info.PixelDimensions(1:3);
-         niftiwrite(akc_out, fullfile(outdir,'akc_out2.nii'), info);
+        info.ImageSize = info.ImageSize(1:3);
+        info.PixelDimensions = info.PixelDimensions(1:3);
+        niftiwrite(akc_out, fullfile(outdir,'akc_out2.nii'), info);
     end
     
     if smooth
         disp('...smoothing');
-        if ~exist('akc_out','var'), akc_out = zeros(size(mask)); end
         dwi = nlmsmooth(dwi,mask,akc_out);
         [b0,dt] = dki_fit(dwi,[bvec,bval],mask,constraints,[],maxbval);
         se = strel('cube',3);
         [dt,dwi,akc_out] = correctDt(dt,dwi,imerode(mask,se),bval,bvec);
         disp(['N outliers = ',num2str(sum(akc_out(:)))]);
     end
+        
 
     if cumulants
         dt = vectorize(dt, mask);
@@ -202,6 +212,53 @@ function tensorfitting(root,outdir,detectoutliers,cumulants,dti,dki,wmti,fitcons
         info.PixelDimensions = cat(2, info.PixelDimensions, NaN);
         niftiwrite(fe, fullfile(outdir,'fe_dwi.nii'), info);     
     end
+    
+    function dwi = nlmsmooth(dwi,mask, akc)
+        kernel = 5;
+        k = floor(kernel/2);
+        k_ = ceil(kernel/2);
+        maskinds = find(mask);
+        dwi_ = zeros(length(maskinds),size(dwi,4));
+        dwi_norm = zeros(size(dwi));
+        for i = 1:size(dwi,4)
+            dwii = abs(dwi(:,:,:,i));
+            dwi_norm(:,:,:,i) = dwii./max(dwii(:));
+        end
+        parfor index = 1 : length(maskinds)
+            thisLinearIndex = maskinds(index);
+            % Get the x,y,z location
+            [x,y,z] = ind2sub(size(mask), thisLinearIndex);
+            if (z < k_ || z > size(dwi,3)-k) || (x < k_ || x > size(dwi,1)-k) || (y < k_ || y > size(dwi,1)-k)
+                continue
+            end
+    
+            akcpatch = reshape(logical(akc(x-k:x+k,y-k:y+k,z-k:z+k)),[kernel^3,1]);
+            ref = repmat(reshape(dwi_norm(x,y,z,:),[1,size(dwi,4)]),[kernel^3,1]);
+            patch = reshape(dwi_norm(x-k:x+k,y-k:y+k,z-k:z+k,:),[kernel^3,size(dwi,4)]);
+            patchorig = reshape(dwi(x-k:x+k,y-k:y+k,z-k:z+k,:),[kernel^3,size(dwi,4)]);
+            intensities = sqrt(sum((patch-ref).^2,2))./size(dwi,4);
+            [min_wgs,min_idx] = sort(intensities, 'ascend');
+            
+            wgs_max = min_wgs(end);
+            min_wgs(akcpatch) = wgs_max;
+            
+            goodidx = min_wgs < prctile(min_wgs,10);
+            min_idx = min_idx(goodidx);
+            min_wgs = min_wgs(goodidx);
+            wgs_max = max(min_wgs);
+            
+            wgs_inv = wgs_max - min_wgs;
+            wgs_nrm = wgs_inv/sum(wgs_inv);
+            wval = sum(patchorig(min_idx,:).*(wgs_nrm*ones(1,size(dwi,4))));
+            dwi_(index,:)= wval;
+         end
+         for idx = 1:length(maskinds)
+            thisLinearIndex = maskinds(idx);
+            [x,y,z] = ind2sub(size(mask),thisLinearIndex);
+            dwi(x,y,z,:) = dwi_(idx,:);
+         end
+    end
+        
 
     function [s, mask] = vectorize(S, mask)
         if nargin == 1
@@ -264,16 +321,16 @@ function tensorfitting(root,outdir,detectoutliers,cumulants,dti,dki,wmti,fitcons
             thisLinearIndex = nanLinearIndexes(index);
             % Get the x,y,z location
             [x,y,z] = ind2sub(size(nanlocations), thisLinearIndex);
-            if z < k_ || z > size(dwi,3)-k
+            if (z < k_ || z > size(dwi,3)-k) || (x < k_ || x > size(dwi,1)-k) || (y < k_ || y > size(dwi,1)-k)
                 continue
             end
-            
+            %keyboard
             akcpatch = reshape(logical(nanlocations(x-k:x+k,y-k:y+k,z-k:z+k)),[kernel^3,1]);
             
             ref = repmat(reshape(dwi_norm(x,y,z,:),[1,size(dwi,4)]),[kernel^3,1]);
             patch = reshape(dwi_norm(x-k:x+k,y-k:y+k,z-k:z+k,:),[kernel^3,size(dwi,4)]);
             patchorig = reshape(dwi(x-k:x+k,y-k:y+k,z-k:z+k,:),[kernel^3,size(dwi,4)]);
-            intensities = sqrt(sum((patch-ref).^2,2))./size(dwi,4);
+            intensities = sqrt(sum((patch-ref).^2,2)./size(dwi,4));
             [min_wgs,min_idx] = sort(intensities, 'ascend');
             
             wgs_max = min_wgs(end);
@@ -288,54 +345,11 @@ function tensorfitting(root,outdir,detectoutliers,cumulants,dti,dki,wmti,fitcons
             wgs_nrm = wgs_inv/sum(wgs_inv);
             wval = sum(patchorig(min_idx,:).*(wgs_nrm*ones(1,size(dwi,4))));
             dwi_(index,:)= wval;
-        end       
+        end
+                   
     end
 
-    function dwi = nlmsmooth(dwi,mask, akc)
-        kernel = 5;
-        k = floor(kernel/2);
-        k_ = ceil(kernel/2);
-        maskinds = find(mask);
-        dwi_ = zeros(length(maskinds),size(dwi,4));
-        dwi_norm = zeros(size(dwi));
-        for i = 1:size(dwi,4)
-            dwii = abs(dwi(:,:,:,i));
-            dwi_norm(:,:,:,i) = dwii./max(dwii(:));
-        end
-        parfor index = 1 : length(maskinds)
-            thisLinearIndex = maskinds(index);
-            % Get the x,y,z location
-            [x,y,z] = ind2sub(size(mask), thisLinearIndex);
-            if (z < k_ || z > size(dwi,3)-k) || (x < k_ || x > size(dwi,1)-k) || (y < k_ || y > size(dwi,1)-k)
-                continue
-            end
-    
-            akcpatch = reshape(logical(akc(x-k:x+k,y-k:y+k,z-k:z+k)),[kernel^3,1]);
-            ref = repmat(reshape(dwi_norm(x,y,z,:),[1,size(dwi,4)]),[kernel^3,1]);
-            patch = reshape(dwi_norm(x-k:x+k,y-k:y+k,z-k:z+k,:),[kernel^3,size(dwi,4)]);
-            patchorig = reshape(dwi(x-k:x+k,y-k:y+k,z-k:z+k,:),[kernel^3,size(dwi,4)]);
-            intensities = sqrt(sum((patch-ref).^2,2))./size(dwi,4);
-            [min_wgs,min_idx] = sort(intensities, 'ascend');
-            
-            wgs_max = min_wgs(end);
-            min_wgs(akcpatch) = wgs_max;
-            
-            goodidx = min_wgs < prctile(min_wgs,10);
-            min_idx = min_idx(goodidx);
-            min_wgs = min_wgs(goodidx);
-            wgs_max = max(min_wgs);
-            
-            wgs_inv = wgs_max - min_wgs;
-            wgs_nrm = wgs_inv/sum(wgs_inv);
-            wval = sum(patchorig(min_idx,:).*(wgs_nrm*ones(1,size(dwi,4))));
-            dwi_(index,:)= wval;
-         end
-         for idx = 1:length(maskinds)
-            thisLinearIndex = maskinds(idx);
-            [x,y,z] = ind2sub(size(mask),thisLinearIndex);
-            dwi(x,y,z,:) = dwi_(idx,:);
-         end
-    end
+
 
 end
 

@@ -43,6 +43,15 @@ function tensorfitting(root,outdir,detectoutliers,cumulants,dti,dki,wmti,fitcons
     cumulants = logical(cumulants);
     smooth = logical(smooth);
     
+%     mesoset1 = dwi(:,:,:,1:23);
+%     mesoset2 = dwi(:,:,:,24:end);
+%     b01 = mesoset1(:,:,:,1);
+%     b02 = mesoset2(:,:,:,1);
+%     ratio = b01./b02;
+%     %mesoset1 = mesoset1./b01;%.*ratio;
+%     mesoset2 = mesoset2.*ratio;
+%     dwi = cat(4,mesoset1,mesoset2);
+    
 
     if detectoutliers
         disp('...running IRWLLS')
@@ -60,7 +69,7 @@ function tensorfitting(root,outdir,detectoutliers,cumulants,dti,dki,wmti,fitcons
 
     if akc
          disp('...running AKC correction')
-         [dt,dwi,akc_out] = correctDt(dt,dwi,mask,bval,bvec);
+         [dt,akc_out] = correctDt(dt,dwi,mask,bval,bvec);
          disp(['N outliers = ',num2str(sum(akc_out(:)))]);
         
          info.ImageSize = info.ImageSize(1:3);
@@ -72,18 +81,14 @@ function tensorfitting(root,outdir,detectoutliers,cumulants,dti,dki,wmti,fitcons
          akc_out(isnan(akc_out)) = 0;
          disp(['N outliers = ',num2str(sum(akc_out(:)))]);
          info.ImageSize = info.ImageSize(1:3);
-         info.PixelDimensions = info.PixelDimensions(1:3);
-         niftiwrite(akc_out, fullfile(outdir,'akc_out2.nii'), info);
+        info.PixelDimensions = info.PixelDimensions(1:3);
+        niftiwrite(akc_out, fullfile(outdir,'akc_out2.nii'), info);
     end
     
     if smooth
         disp('...smoothing');
-        if ~exist('akc_out','var'), akc_out = zeros(size(mask)); end
-        dwi = nlmsmooth(dwi,mask,akc_out);
+        dwi = nlmsmooth(dwi,mask);
         [b0,dt] = dki_fit(dwi,[bvec,bval],mask,constraints,[],maxbval);
-        se = strel('cube',3);
-        [dt,dwi,akc_out] = correctDt(dt,dwi,imerode(mask,se),bval,bvec);
-        disp(['N outliers = ',num2str(sum(akc_out(:)))]);
     end
 
     if cumulants
@@ -224,7 +229,7 @@ function tensorfitting(root,outdir,detectoutliers,cumulants,dti,dki,wmti,fitcons
         end
     end
 
-    function[dt,dwi,akc_out] = correctDt(dt,dwi,mask,bval,bvec)
+    function[dt,akc_out] = correctDt(dt,dwi,mask,bval,bvec)
         akc_out = outlierdetection(dt,mask);
         akc_out(isnan(akc_out)) = 0;
         
@@ -291,7 +296,7 @@ function tensorfitting(root,outdir,detectoutliers,cumulants,dti,dki,wmti,fitcons
         end       
     end
 
-    function dwi = nlmsmooth(dwi,mask, akc)
+    function dwi = nlmsmooth(dwi,mask)
         kernel = 5;
         k = floor(kernel/2);
         k_ = ceil(kernel/2);
@@ -310,17 +315,13 @@ function tensorfitting(root,outdir,detectoutliers,cumulants,dti,dki,wmti,fitcons
                 continue
             end
     
-            akcpatch = reshape(logical(akc(x-k:x+k,y-k:y+k,z-k:z+k)),[kernel^3,1]);
             ref = repmat(reshape(dwi_norm(x,y,z,:),[1,size(dwi,4)]),[kernel^3,1]);
             patch = reshape(dwi_norm(x-k:x+k,y-k:y+k,z-k:z+k,:),[kernel^3,size(dwi,4)]);
             patchorig = reshape(dwi(x-k:x+k,y-k:y+k,z-k:z+k,:),[kernel^3,size(dwi,4)]);
             intensities = sqrt(sum((patch-ref).^2,2))./size(dwi,4);
             [min_wgs,min_idx] = sort(intensities, 'ascend');
             
-            wgs_max = min_wgs(end);
-            min_wgs(akcpatch) = wgs_max;
-            
-            goodidx = min_wgs < prctile(min_wgs,10);
+            goodidx = min_wgs < 2*min_wgs(2);
             min_idx = min_idx(goodidx);
             min_wgs = min_wgs(goodidx);
             wgs_max = max(min_wgs);
@@ -329,7 +330,7 @@ function tensorfitting(root,outdir,detectoutliers,cumulants,dti,dki,wmti,fitcons
             wgs_nrm = wgs_inv/sum(wgs_inv);
             wval = sum(patchorig(min_idx,:).*(wgs_nrm*ones(1,size(dwi,4))));
             dwi_(index,:)= wval;
-         end
+        end
          for idx = 1:length(maskinds)
             thisLinearIndex = maskinds(idx);
             [x,y,z] = ind2sub(size(mask),thisLinearIndex);
