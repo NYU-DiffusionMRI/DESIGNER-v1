@@ -105,8 +105,10 @@ class MP(object):
             if self.patchsize >= np.prod(kernel):
                 print('Warning: selecting sane default nonlocal patch size')
                 self.patchsize = np.floor(np.prod(kernel) - 0.2*np.prod(kernel))
-                if self.patchsize <= dwi.shape[-1]:
-                    self.patchsize = dwi.shape[-1] + 1
+            elif self.patchsize <= dwi.shape[-1]:
+                print('Warning: selecting sane default nonlocal patch size')
+                self.patchsize = dwi.shape[-1] + 1
+            if not isinstance(self.patchsize, int):
                 self.patchsize = self.patchsize.astype(int)
             pi, pj, pk = np.where(np.ones((self.kernel)))
             patchcoords = np.vstack((pi,pj,pk)).T
@@ -291,9 +293,11 @@ class MP(object):
         sigmasq_2 = rangeData / rangeMP
 
         t = np.where(sigmasq_2 < sigmasq_1[:Mp-tn])
+
         if t[0].any():
             t = t[0][0]
-            pass
+        else:
+            t = Mp-1
         
         sigma = np.sqrt(sigmasq_1[t])
         npars = t
