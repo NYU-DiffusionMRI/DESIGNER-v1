@@ -68,7 +68,7 @@ def usage(cmdline): #pylint: disable=unused-variable
     options.add_argument('-mask', action='store_true',help='compute a brain mask prior to tensor fitting to stip skull and improve efficientcy')
     options.add_argument('-datatype', metavar=('<spec>'), help='If using the "-processing_only" option, you can specify the output datatype. Valid options are float32, float32le, float32be, float64, float64le, float64be, int64, uint64, int64le, uint64le, int64be, uint64be, int32, uint32, int32le, uint32le, int32be, uint32be, int16, uint16, int16le, uint16le, int16be, uint16be, cfloat32, cfloat32le, cfloat32be, cfloat64, cfloat64le, cfloat64be, int8, uint8, bit')
     options.add_argument('-fit_constraints',help='constrain the wlls fit (default 0,1,0)')
-    options.add_argument('-fit_smoothing',action='store_true',help='NLM smoothing on wlls fit')
+    options.add_argument('-fit_smoothing',metavar=('<percentile>'),help='NLM smoothing on wlls fit')
     options.add_argument('-outliers',action='store_true',help='Perform IRWLLS outlier detection')
     options.add_argument('-fslbvec',metavar=('<bvecs>'),help='specify bvec path if path is different from the path to the dwi or the file has an unusual extention')
     options.add_argument('-fslbval',metavar=('<bvals>'),help='specify bval path if path is different from the path to the dwi or the file has an unusual extention')
@@ -82,6 +82,7 @@ def usage(cmdline): #pylint: disable=unused-variable
     rpe_options.add_argument('-rpe_all', metavar=('<reverse PE dwi volume>'), help='Specify that ALL DWIs have been acquired with opposing phase-encoding; this information will be used to perform a recombination of image volumes (each pair of volumes with the same b-vector but different phase encoding directions will be combined together into a single volume). The argument to this option is the set of volumes with reverse phase encoding but the same b-vectors as the input image')
     rpe_options.add_argument('-rpe_header', action='store_true', help='Specify that the phase-encoding information can be found in the image header(s), and that this is the information that the script should use')
     rpe_options.add_argument('-pe_dir', metavar=('<phase encoding direction>'), help='Specify the phase encoding direction of the input series (required if using the eddy option). Can be a signed axis number (e.g. -0, 1, +2), an axis designator (e.g. RL, PA, IS), or NIfTI axis codes (e.g. i-, j, k)')
+    rpe_options.add_argument('-mb', metavar=('<multi band factor>'), help='specify multiband factor',default='1')
     rpg_options = cmdline.add_argument_group('Options for specifying the PF factor and PF dimension')
     rpg_options.add_argument('-pf', metavar=('<PF factor>'), help='Specify the partial fourier factor (e.g. 7/8, 6/8)')
     rpg_options.add_argument('-dim', metavar=('<PF dimension>'), help='Specify the partial fourier dimension (e.g. 1, 2 or 3 for direction i, j, or k respectively)')
@@ -286,27 +287,34 @@ def execute(): #pylint: disable=unused-variable
         # acqpath = path.to_scratch('eddyacqp.txt')
 
         print("...Eddy current, EPI, motion correction...")
+        #eddyopts = '" --cnr_maps --repol --data_is_shelled --ol_type=both --mb=' + app.ARGS.mb + ' "'
+        #print('dwifslpreproc -nocleanup -scratch ' + path.to_scratch('',True) + '/eddy_processing' + ' -eddy_options ' + eddyopts + ' -rpe_none -pe_dir ' + app.ARGS.pe_dir + ' working.mif dwiec.mif')
         if app.ARGS.rpe_none:
+            eddyopts = '" --cnr_maps --repol --data_is_shelled "'
             #run.command('dwifslpreproc -nocleanup -eddy_options " --index=' + idxpath + ' --repol --data_is_shelled" -rpe_none -pe_dir ' + app.ARGS.pe_dir + ' working.mif dwiec.mif')
-            run.command('dwifslpreproc -nocleanup -eddy_options " --repol --data_is_shelled" -rpe_none -pe_dir ' + app.ARGS.pe_dir + ' working.mif dwiec.mif')
+            run.command('dwifslpreproc -nocleanup -scratch ' + path.to_scratch('',True) + '/eddy_processing' + ' -eddy_options ' + eddyopts + ' -rpe_none -pe_dir ' + app.ARGS.pe_dir + ' working.mif dwiec.mif')
         elif app.ARGS.rpe_pair:
-            run.command('dwiextract -bzero dwi.mif - | mrconvert -coord 3 0 - b0pe.mif')
+            eddyopts = '" --cnr_maps --repol --data_is_shelled"'
+            run.command('dwiextract -bzero dwi.mif - | mrconvert -coord 3 0 - b0pe.nii')
             rpe_size = [ int(s) for s in image.Header(path.from_user(app.ARGS.rpe_pair)).size() ]
             if len(rpe_size) == 4:
-                run.command('mrconvert -coord 3 0 ' + path.from_user(app.ARGS.rpe_pair) + ' b0rpe.mif')
+                run.command('mrconvert -coord 3 0 ' + path.from_user(app.ARGS.rpe_pair) + ' b0rpe.nii')
             else: 
-                run.command('mrconvert ' + path.from_user(app.ARGS.rpe_pair) + ' b0rpe.mif')
-            run.command('mrcat -axis 3 b0pe.mif b0rpe.mif rpepair.mif')
+                run.command('mrconvert ' + path.from_user(app.ARGS.rpe_pair) + ' b0rpe.nii')
+            run.command('flirt -in b0rpe.nii -ref b0pe.nii -dof 6 -out b0rpe2pe.nii.gz')
+            run.command('mrcat -axis 3 b0pe.nii b0rpe2pe.nii.gz rpepair.mif')
             #run.command('dwifslpreproc -nocleanup -eddy_options " --acqp=' + acqpath + ' --index=' + idxpath + ' --repol --data_is_shelled" -rpe_pair -se_epi rpepair.mif -align_seepi -pe_dir ' + app.ARGS.pe_dir + ' working.mif dwiec.mif')
-            run.command('dwifslpreproc -nocleanup -scratch ' + path.to_scratch('',True) + '/eddy_processing' + ' -eddy_options " --cnr_maps --repol --data_is_shelled" -rpe_pair -se_epi rpepair.mif -align_seepi -pe_dir ' + app.ARGS.pe_dir + ' working.mif dwiec.mif')
+            run.command('dwifslpreproc -nocleanup -scratch ' + path.to_scratch('',True) + '/eddy_processing' + ' -eddy_options ' + eddyopts + ' -rpe_pair -se_epi rpepair.mif -align_seepi -pe_dir ' + app.ARGS.pe_dir + ' working.mif dwiec.mif')
         elif app.ARGS.rpe_all:
+            eddyopts = '" --cnr_maps --repol --data_is_shelled"'
             run.command('mrconvert -export_grad_mrtrix grad.txt dwi.mif tmp.mif')
             run.command('mrconvert -grad grad.txt ' + path.from_user(app.ARGS.rpe_all) + ' dwirpe.mif')
             run.command('mrcat -axis 3 working.mif dwirpe.mif dwipe_rpe.mif')
-            run.command('dwifslpreproc -nocleanup -eddy_options " --repol --data_is_shelled" -rpe_all -pe_dir ' + app.ARGS.pe_dir + ' dwipe_rpe.mif dwiec.mif')
+            run.command('dwifslpreproc -nocleanup -eddy_options ' + eddyopts + ' -rpe_all -pe_dir ' + app.ARGS.pe_dir + ' dwipe_rpe.mif dwiec.mif')
             run.function(os.remove,'tmp.mif')
         elif app.ARGS.rpe_header:
-            run.command('dwifslpreproc -nocleanup -eddy_options " --repol --data_is_shelled" -rpe_header working.mif dwiec.mif')
+            eddyopts = '" --cnr_maps --repol --data_is_shelled"'
+            run.command('dwifslpreproc -nocleanup -eddy_options ' + eddyopts + ' -rpe_header working.mif dwiec.mif')
         elif not app.ARGS.rpe_header and not app.ARGS.rpe_all and not app.ARGS.rpe_pair:
             print("the eddy option must run alongside -rpe_header, -rpe_all, or -rpe_pair option")
             quit()
@@ -340,7 +348,7 @@ def execute(): #pylint: disable=unused-variable
             shutil.copyfileobj(f_in, f_out)
         run.function(os.remove,'brain_mask' + fsl_suffix)
 
-    if app.ARGS.smooth or app.ARGS.normalise:
+    if app.ARGS.smooth:
         print("...Computing CSF mask")
         run.command('mrconvert -force -export_grad_mrtrix grad.txt working.mif dwibc.nii')
         run.command('fast -n 4 -t 2 -o tissue brain' + fsl_suffix)
@@ -399,17 +407,37 @@ def execute(): #pylint: disable=unused-variable
     # b0 normalisation
     if app.ARGS.normalise:
         print("...Beginning normalisation")
-        if len(DWInlist) == 1:
-            run.command('dwinormalise working.mif CSFmask.nii dwinm.mif')
-        else:
-            miflist = []
-            for idx,i in enumerate(DWInlist):
-                run.command('mrconvert -coord 3 ' + idxlist[idx] + ' working.mif dwiprenm' + str(idx) + '.mif')
-                run.command('dwinormalise dwiprenm' + str(idx) + '.mif CSFmask.nii dwinm' + str(idx) + '.mif')
-                miflist.append('dwinm' + str(idx) + '.mif')
-                DWImif = ' '.join(miflist)
-            run.command('mrcat -axis 3 ' + DWImif + ' dwinm.mif')
-        run.command('mrconvert -force dwinm.mif working.mif')
+        if app.ARGS.normalise and not app.ARGS.b1correct:
+            if not len(DWInlist) == 1:
+                miflist = []
+                for idx,i in enumerate(DWInlist):
+                    run.command('mrconvert -coord 3 ' + idxlist[idx] + ' working.mif dwiprenm' + str(idx) + '.mif')
+                    run.command('dwiextract dwiprenm' + str(idx) + '.mif - -bzero | mrmath - mean mean_bzero_prenm' + str(idx) + '.mif -axis 3')
+                    run.command('mrfilter -stdev 3 mean_bzero_prenm' + str(idx) + '.mif smooth mean_bzero_sm' + str(idx) + '.mif')
+                    miflist.append('mean_bzero_sm' + str(idx) + '.mif')
+                nmlist = []
+                nmlist.append('dwiprenm0.mif')
+                for idx,i in enumerate(miflist[1:]):
+                    run.command('mrcalc ' + miflist[0] + ' ' + i + ' -div ratio0to' + str(idx+1) + '.mif')
+                    run.command('mrcalc dwiprenm' + str(idx+1) + '.mif ratio0to' + str(idx+1) + '.mif -mult dwinm' + str(idx+1) + '.mif')
+                    nmlist.append('dwinm' + str(idx+1) + '.mif')
+                    DWImif = ' '.join(nmlist)
+                run.command('mrcat -axis 3 ' + DWImif + ' dwinm.mif')
+                run.command('mrconvert -force dwinm.mif working.mif')
+        elif app.ARGS.normalise and app.ARGS.b1correct:
+            if not len(DWInlist) == 1:
+                for idx,i in enumerate(DWInlist):
+                    run.command('mrconvert -force -coord 3 ' + idxlist[idx] + ' working.mif dwiprenm' + str(idx) + '.mif')
+                nmlist = []
+                nmlist.append('dwiprenm0.mif')
+                for idx,i in enumerate(DWInlist[1:]):
+                    run.command('mrcalc -force biasfield0.mif biasfield' + str(idx+1) + '.mif' + ' -div ratio0to' + str(idx+1) + '.mif')
+                    run.command('mrcalc -force dwiprenm' + str(idx+1) + '.mif ratio0to' + str(idx+1) + '.mif -mult dwinm' + str(idx+1) + '.mif')
+                    nmlist.append('dwinm' + str(idx+1) + '.mif')
+                    DWImif = ' '.join(nmlist)
+                run.command('mrcat -axis 3 ' + DWImif + ' dwinm.mif')
+                run.command('mrconvert -force dwinm.mif working.mif')
+
 
     run.command('mrconvert -force -datatype float32le working.mif dwi_designer.nii')
     run.function(os.remove,'working.mif')
@@ -452,7 +480,7 @@ def execute(): #pylint: disable=unused-variable
             fitW=1
         fitsmooth=0
         if app.ARGS.fit_smoothing:
-            fitsmooth=1
+            fitsmooth=app.ARGS.fit_smoothing
 
         eng.tensorfitting(path.to_scratch('',True),path.from_user(app.ARGS.output, True),outliers,KCUM,DTI,DKI,WMTI,constraints,AKC,DKI_root,fitW,fitsmooth,nargout=0)
         eng.quit()

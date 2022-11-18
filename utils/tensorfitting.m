@@ -13,6 +13,8 @@ function tensorfitting(root,outdir,detectoutliers,cumulants,dti,dki,wmti,fitcons
     if maskex == 2
         nii = niftiread(fullfile(root,'brain_mask.nii')); mask = logical(nii);
     end
+    
+    
     nii = niftiread(fullfile(root,'dwi_designer.nii')); dwi = double(nii);
     info = niftiinfo(fullfile(root,'dwi_designer.nii'));
     ndwis = size(dwi,4); %pixdim5 = nii.hdr.dime.pixdim(5);
@@ -22,7 +24,10 @@ function tensorfitting(root,outdir,detectoutliers,cumulants,dti,dki,wmti,fitcons
 
     bvallist = dir(fullfile(root,'dwi_designer.bval')); bvaldir = bvallist.name;
     bveclist = dir(fullfile(root,'dwi_designer.bvec')); bvecdir = bveclist.name;
-    bval = textread(fullfile(root,bvaldir)); bval = bval(:, 1:ndwis)'; bval = bval./1000;
+    bval = textread(fullfile(root,bvaldir)); bval = bval(:, 1:ndwis)';
+    if max(bval)>500
+        bval = bval./1000;
+    end
     bvec = textread(fullfile(root,bvecdir)); bvec = bvec(:, 1:ndwis)';
     maxbval = 3;
 
@@ -109,7 +114,10 @@ function tensorfitting(root,outdir,detectoutliers,cumulants,dti,dki,wmti,fitcons
     
     if dti
         disp('...getting DTI params')
-        list = round(bval) == 0 | round(bval) < 2;
+        bu = unique(round(bval));
+        bui = find(bu>.3,1);
+        buup = bu(bui);
+        list = round(bval) == 0 | round(bval) == buup;
         dwi_dti = dwi(:,:,:,list);
         bvec_dti = bvec(list,:);
         bval_dti = bval(list);
@@ -190,6 +198,7 @@ function tensorfitting(root,outdir,detectoutliers,cumulants,dti,dki,wmti,fitcons
     
     if fitWDKI
         disp('...getting W params')
+        dt(~isfinite(dt)) = 0;
         [fa, md, rd, ad, fe, mw,  rw, aw] = dwi_parameters(dt,mask);
         fe = cat(4,fa.*fe(:,:,:,1),fa.*fe(:,:,:,2),fa.*fe(:,:,:,3));
         disp('...saving DWI params')

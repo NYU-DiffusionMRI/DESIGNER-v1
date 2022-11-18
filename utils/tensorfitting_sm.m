@@ -1,4 +1,4 @@
-function tensorfitting(dwi,root,outdir,detectoutliers,cumulants,dti,dki,wmti,fitconstraints,akc,DKIroot,fitWDKI,smooth,robust,Jrobust)
+function tensorfitting(dwi,mask,bvec,bval,root,outdir,detectoutliers,cumulants,dti,dki,wmti,fitconstraints,akc,DKIroot,fitWDKI,smooth,robust,Jrobust)
 
     addpath(genpath(DKIroot));
     
@@ -12,21 +12,21 @@ function tensorfitting(dwi,root,outdir,detectoutliers,cumulants,dti,dki,wmti,fit
         pctRunOnAll warning('off','all');
     end
 
-    maskex = exist(fullfile(root,'mask.nii'),'file');
-    if maskex == 2
-        nii = niftiread(fullfile(root,'mask.nii')); mask = logical(nii);
-    end
+    %maskex = exist(fullfile(root,'mask.nii'),'file');
+    %if maskex == 2
+    %    nii = niftiread(fullfile(root,'mask.nii')); mask = logical(nii);
+    %end
     %nii = niftiread(fullfile(root,'dwi_designer.nii')); dwi = double(nii);
-    info = niftiinfo(fullfile(root,'data.nii'));
+    info = niftiinfo(fullfile(root,'dwi_superresolution_T2.nii'));
     ndwis = size(dwi,4); %pixdim5 = nii.hdr.dime.pixdim(5);
-    if maskex == 0
-        mask = logical(ones(size(dwi,1),size(dwi,2),size(dwi,3)));
-    end
+%     if maskex == 0
+%         mask = logical(ones(size(dwi,1),size(dwi,2),size(dwi,3)));
+%     end
 
-    bvallist = dir(fullfile(root,'data.bval')); bvaldir = bvallist.name;
-    bveclist = dir(fullfile(root,'data.bvec')); bvecdir = bveclist.name;
-    bval = textread(fullfile(root,bvaldir)); bval = bval(:, 1:ndwis)'; bval = bval./1000;
-    bvec = textread(fullfile(root,bvecdir)); bvec = bvec(:, 1:ndwis)';
+    %bvallist = dir(fullfile(root,'data.bval')); bvaldir = bvallist.name;
+    %bveclist = dir(fullfile(root,'data.bvec')); bvecdir = bveclist.name;
+    %bval = textread(fullfile(root,bvaldir)); bval = bval(:, 1:ndwis)'; bval = bval./1000;
+    %bvec = textread(fullfile(root,bvecdir)); bvec = bvec(:, 1:ndwis)';
     maxbval = 3;
 
     list = bval <= maxbval;
@@ -124,14 +124,13 @@ function tensorfitting(dwi,root,outdir,detectoutliers,cumulants,dti,dki,wmti,fit
         % Get proxy for regularized fitting
         grad = [bvec, bval];
 
-        [b0,Dlm,Wlm,Dl,Wl,DTI_scalars,DKI_scalars,ExtraScalars] = Fit_DKI_LTE(double(dwi_strongly_smoothed),bval,bvec,mask,0);
+        [b0,Dlm,Wlm,Dl,Wl,DTI_scalars,DKI_scalars,ExtraScalars] = FIT_DKI_LTE(double(dwi_strongly_smoothed),bval,bvec,mask,0);
         DlWlproxy = cat(4,Dl,Wl);
         %maps_proxy = get_maps_from_4D_DW_tensors(dt_proxy,mask_fit,'cart','JV',0);
         % =========================================================================
         % Regularized fitting on a smoothing proxy
         alpha_tuning = [5 0 5 0 0]; % No clue what is optimal
-        %alpha_tuning = [1 1/3 5 2 1/2];
-        %DlWlproxy=cat(4,D0,D2,W0,W2,W4);
+        alpha_tuning = [1 1/3 5 2 1/2];
         DlWlproxy(~isfinite(DlWlproxy(:)))=0;
         DlWlproxy = abs(DlWlproxy);
        
@@ -364,7 +363,7 @@ function tensorfitting(dwi,root,outdir,detectoutliers,cumulants,dti,dki,wmti,fit
     end
 
     function dwi = nlmsmooth(dwi,mask, akc, smoothlevel)
-        kernel = 5;
+        kernel = 9;
         k = floor(kernel/2);
         k_ = ceil(kernel/2);
         maskinds = find(mask);

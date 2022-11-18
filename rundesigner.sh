@@ -1,16 +1,16 @@
 
 echo $BASH_VERSION
 
-subjs=( M3808 M3809 )
+subjs=( M9806 )
 
 root=/mnt/labspace/Projects/MESO_v2.0/ALLSUBJS_2.0
 for i in ${subjs[@]}; do
     (
     cd $root/$i
 
-    meso=(`ls | grep DIFF_meso.nii`)
-    research=(`ls | grep DIFF_meso_research.nii`)
-    pa=(`ls | grep DIFF_meso_PA.nii`)
+    meso=(`ls | grep DIFF_meso_1.nii`)
+    research=(`ls | grep DIFF_meso_2.nii`)
+    pa=(`ls | grep DIFF_meso_pa.nii`)
 
     if [ ${#research[@]} -eq 0 ]; then
         continue
@@ -19,12 +19,11 @@ for i in ${subjs[@]}; do
     echo $research
     echo $pa
     
-    /cbi05data/data1/Hamster/DESIGNER/designer/DESIGNER.py \
-    -denoise \
-
+    /cbi05data/data1/Hamster/DESIGNER/bin/designer \
+    -rpe_pair $pa -eddy -pe_dir AP \
     -nocleanup \
-    -tempdir $root/$i/designer_processing_test \
-    $meso,$research $root/$i/designer_out_test
+    -scratch $root/$i/designer_processing_test_pe \
+    $meso,$research $root/$i/designer_out_test_pe
     ) #&
 done
 wait

@@ -149,15 +149,19 @@ function [b0, dt] = dki_fit(dwi, grad, mask, constraints, outliers, maxbval)
         end
     else
         parfor i = 1:nvoxels
+            try
             in_ = outliers(:, i) == 0;
             b_ = b(in_, :);
-            if isempty(b_) || cond(b(in_, :))>1e15
+            if isempty(b_) || cond(b(in_, :))>1e10
                 dt(:, i) = NaN;
             else
                 wi = w(:,i); Wi = diag(wi(in_)); 
                 logdwii = log(dwi(in_,i));
                 dt(:,i) = (Wi*b_)\(Wi*logdwii);
-
+            end
+            catch
+                dt(:, i) = NaN;
+                warning('DKI fitting failed for voxel %s',i)
             end
         end
     end

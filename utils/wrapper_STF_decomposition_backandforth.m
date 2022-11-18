@@ -1,5 +1,5 @@
-function dt_out = wrapper_STF_decomposition_backandforth(dt_in,direction,mask,inputOrder)
-% dt_out = wrapper_STF_decomposition_backandforth(dt_in,direction,mask,inputOrder)
+function dt_out = wrapper_STF_decomposition_backandforth(dt_in,direction,mask,inputOrder,CSphase)
+% dt_out = wrapper_STF_decomposition_backandforth(dt_in,direction,mask,inputOrder,CSphase)
 %
 %
 % S_ij is ordered:   [S_11;S_22;S_33;S_12;S_13;S_23]
@@ -11,10 +11,23 @@ function dt_out = wrapper_STF_decomposition_backandforth(dt_in,direction,mask,in
 % dt_in can be a rank 2 or rank 4 tensor (6 or 15 independent elements)
 % direction can be 'STF2cart' or 'cart2STF'
 %
-% This does not use the Condon-Shortley phase in the definition of spherical harmonics
+% If CSphase flag is empty or 0, this function does not use the Condon-Shortley
+% phase in the definition of spherical harmonics (if 1 then yes)
+%
+%
+% For more details see Rotational Invariants of the Cumulant Expansion
+% (RICE), ISMRM 2022, by Santiago Coelho et. al
 %
 % By: Santiago Coelho (03/09/2021) Santiago.Coelho@nyulangone.org
-fprintf('Remember this does not use the Condon-Shortley phase in the definition of spherical harmonics!\n')
+
+if ~exist('CSphase','var') || isempty(CSphase) || ~CSphase
+    CSphase=0; % 0 means we DO NOT use it
+    fprintf('Not using the Condon-Shortley phase on the spherical harmonics definition!\n')
+else
+    CSphase=1; % 1 means we use it
+    fprintf('Using the Condon-Shortley phase on the spherical harmonics definition!\n')
+end
+
 is_4D_array=length(size(dt_in))==4;
 
 if is_4D_array
@@ -35,17 +48,17 @@ end
 
 if strcmp(direction,'STF2cart')
     if nelem==6
-        dt_out = STF2cart_rank2_tensor(dt_in);
+        dt_out = STF2cart_rank2_tensor(dt_in,CSphase);
     elseif nelem==15
-        dt_out = STF2cart_rank4_tensor(dt_in);
+        dt_out = STF2cart_rank4_tensor(dt_in,CSphase);
     else
         error('Rank 2 or rank 4 tensors are only allowed in this function')
     end
 elseif strcmp(direction,'cart2STF')
     if nelem==6
-        dt_out = IrreducibleDecomposition_rank2_tensor(dt_in);
+        dt_out = IrreducibleDecomposition_rank2_tensor(dt_in,CSphase);
     elseif nelem==15
-        dt_out = IrreducibleDecomposition_rank4_tensor(dt_in);
+        dt_out = IrreducibleDecomposition_rank4_tensor(dt_in,CSphase);
     else
         error('Rank 2 or rank 4 tensors are only allowed in this function')
     end
@@ -59,7 +72,7 @@ end
 
 end
 
-function [Slm] = IrreducibleDecomposition_rank2_tensor(S_ij)
+function [Slm] = IrreducibleDecomposition_rank2_tensor(S_ij,CSphase)
 % S: 2D array containing [S_11;S_22;S_33;S_12;S_13;S_23];   
 %
 C0=sqrt(1/(4*pi));
@@ -77,6 +90,10 @@ Y_ij_2m1_vector=Y_ij_2m1([1 5 9 4 7 8]).*[1 1 1 2 2 2];
 Y_ij_20_vector=Y_ij_20([1 5 9 4 7 8]).*[1 1 1 2 2 2];
 Y_ij_21_vector=Y_ij_21([1 5 9 4 7 8]).*[1 1 1 2 2 2];
 Y_ij_22_vector=Y_ij_22([1 5 9 4 7 8]).*[1 1 1 2 2 2];
+if CSphase
+    Y_ij_2m1_vector=-Y_ij_2m1_vector;
+    Y_ij_21_vector=-Y_ij_21_vector;
+end
 Slm(1,:) =1/3*(1/C0^2)*Y_ij_00_vector*S_ij;
 % Slm(1,:)=1/3*(1/C0)*sum(S_ij(1:3,:),1);
 Slm(2,:)=2/3*(1/C2^2)*Y_ij_2m2_vector*S_ij;
@@ -87,7 +104,7 @@ Slm(6,:)=2/3*(1/C2^2)*Y_ij_22_vector*S_ij;
 end
 
 
-function [Slm] = IrreducibleDecomposition_rank4_tensor(S_ijkl)
+function [Slm] = IrreducibleDecomposition_rank4_tensor(S_ijkl,CSphase)
 % Sijkl: 2D array containing [S_1111;S_2222;S_3333;S_1122;S_1133;...
 %                             S_1112;S_1113;S_1123;S_2233;S_2212;...
 %                             S_2213;S_2223;S_3312;S_3313;S_3323];   
@@ -113,7 +130,14 @@ Y_ijkl_41_vector = [0,0,0,0,0,0,2.00713963067187,0,0,0,2.00713963067187,0,0,-2.6
 Y_ijkl_42_vector = [-0.473087347878780,0.473087347878780,0,0,2.83852408727268,0,0,0,-2.83852408727268,0,0,0,0,0,0];
 Y_ijkl_43_vector = [0,0,0,0,0,0,-1.77013076977993,0,0,0,5.31039230933979,0,0,0,0];
 Y_ijkl_44_vector = [0.625835735449177,0.625835735449177,0,-3.75501441269506,0,0,0,0,0,0,0,0,0,0,0];
-
+if CSphase
+    Y_ijkl_2m1_vector=-Y_ijkl_2m1_vector;
+    Y_ijkl_21_vector=-Y_ijkl_21_vector;
+    Y_ijkl_4m3_vector=-Y_ijkl_4m3_vector;
+    Y_ijkl_4m1_vector=-Y_ijkl_4m1_vector;
+    Y_ijkl_41_vector=-Y_ijkl_41_vector;
+    Y_ijkl_43_vector=-Y_ijkl_43_vector;
+end
 Slm(1,:) =1/5*(1/C0^2)*Y_ijkl_00_vector*S_ijkl;
 Slm(2,:) =4/7*(1/C2^2)*Y_ijkl_2m2_vector*S_ijkl;
 Slm(3,:) =4/7*(1/C2^2)*Y_ijkl_2m1_vector*S_ijkl;
@@ -129,10 +153,9 @@ Slm(12,:)=8/35*(1/C4^2)*Y_ijkl_41_vector*S_ijkl;
 Slm(13,:)=8/35*(1/C4^2)*Y_ijkl_42_vector*S_ijkl;
 Slm(14,:)=8/35*(1/C4^2)*Y_ijkl_43_vector*S_ijkl;
 Slm(15,:)=8/35*(1/C4^2)*Y_ijkl_44_vector*S_ijkl;
-
 end
 
-function [Sij] = STF2cart_rank2_tensor(S2m)
+function [Sij] = STF2cart_rank2_tensor(S2m,CSphase)
 % Sij: 2D array containing [S_11;S_22;S_33;S_12;S_13;S_23]
 C0=sqrt(1/(4*pi));
 Y_ij_00=C0*eye(3);
@@ -141,6 +164,10 @@ Y_ij_2m1=[0,0,0;0,0,-0.546274215296040;0,-0.546274215296040,0];
 Y_ij_20 =[-0.315391565252520,0,0;0,-0.315391565252520,0;0,0,0.630783130505040];
 Y_ij_21 =[0,0,-0.546274215296040;0,0,0;-0.546274215296040,0,0];
 Y_ij_22 =[0.546274215296040,0,0;0,-0.546274215296040,0;0,0,0];
+if CSphase
+    Y_ij_2m1=-Y_ij_2m1;
+    Y_ij_21=-Y_ij_21;
+end
 Y_ij_all=cat(3,Y_ij_00,Y_ij_2m2,Y_ij_2m1,Y_ij_20,Y_ij_21,Y_ij_22);
 idx=[1 1;2 2;3 3;1 2;1 3;2 3];
 Sij=0*S2m;
@@ -178,14 +205,18 @@ end
 % end
 
 
-function [Sijkl] = STF2cart_rank4_tensor(S4m)
+function [Sijkl] = STF2cart_rank4_tensor(S4m,CSphase)
 % Sijkl: 2D array containing [S_1111;S_2222;S_3333;S_1122;S_1133;S_1112;S_1113;S_1123;S_2233;S_2212;S_2213;S_2223;S_3312;S_3313;S_3323];   
-load('/Volumes/labspace/Santiago/MyRobustDKI/Y_ijkl_all.mat')
+load('/Users/coelhs01/Documents/SantiagoCoelho/NYU_Postdoc_MyScience/MATLAB/General_Scripts/Y_ijkl_all.mat')
 idx=[ 1,1,1,1; 2,2,2,2; 3,3,3,3; 1,1,2,2; 1,1,3,3; 1,1,1,2; 1,1,1,3; 1,1,2,3; 2,2,3,3; 2,2,1,2; 2,2,1,3; 2,2,2,3; 3,3,1,2; 3,3,1,3; 3,3,2,3];
 Sijkl=0*S4m;
+signs=ones(15,1);
+if CSphase
+    signs([3 5 8 10 12 14])=-1;
+end
 for ii=1:15
     for jj=1:15
-        Sijkl(ii,:)=Sijkl(ii,:)+S4m(jj,:)*Y_ijkl_all(idx(ii,1),idx(ii,2),idx(ii,3),idx(ii,4),jj);
+        Sijkl(ii,:)=Sijkl(ii,:)+S4m(jj,:)*Y_ijkl_all(idx(ii,1),idx(ii,2),idx(ii,3),idx(ii,4),jj)*signs(jj);
     end
 end
 % clc,clear,close all
@@ -208,7 +239,7 @@ end
 % Y_ijkl_all(:,:,:,:,13) =y{2,3,7};
 % Y_ijkl_all(:,:,:,:,14) =y{2,3,8};
 % Y_ijkl_all(:,:,:,:,15) =y{2,3,9};
-% save('/Volumes/labspace/Santiago/MyRobustDKI/Y_ijkl_all.mat','Y_ijkl_all')
+% save('/Users/coelhs01/Documents/SantiagoCoelho/NYU_Postdoc_MyScience/MATLAB/General_Scripts/Y_ijkl_all.mat','Y_ijkl_all')
 end
 
 

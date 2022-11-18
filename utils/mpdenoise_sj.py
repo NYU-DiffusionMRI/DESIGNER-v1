@@ -58,6 +58,9 @@ import bottleneck as bn
 import scipy.linalg
 #import jax.scipy as jsp
 #from jax import jit
+import warnings
+
+warnings.filterwarnings('ignore')
 
 class MP(object):
     def __init__(self, dwi, kernel, patchtype, patchsize, shrinkage, algorithm):
