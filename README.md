@@ -1,4 +1,9 @@
 # DESIGNER
+
+---
+
+## This repository is depricated. For the current version of designer please see the [documentation](https://nyu-diffusionmri.github.io)
+
 Diffusion parameter EStImation with Gibbs and NoisE Removal (“DESIGNER”) is an image-processing pipeline for (diffusion) MRI data that has been developed to identify and correct various specific artifacts and confounding factors for an improved accuracy, precision, and robustness in diffusion MRI analysis.  The pipeline optionally corrects for:
 
 1.   Thermal noise
