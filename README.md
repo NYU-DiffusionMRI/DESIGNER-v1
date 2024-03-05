@@ -1,8 +1,8 @@
-# DESIGNER
+# DESIGNER-v1
 
 ---
 
-## This repository is depricated. For the current version of designer please see the [designer-v2 repository](https://github.com/NYU-DiffusionMRI/DESIGNER-v2). This update is also available to download in pipy. the command is `pip install designer2`. 
+## This repository is deprecated. For the current version of designer please see the [designer-v2 repository](https://github.com/NYU-DiffusionMRI/DESIGNER-v2). 
 
 Diffusion parameter EStImation with Gibbs and NoisE Removal (“DESIGNER”) is an image-processing pipeline for (diffusion) MRI data that has been developed to identify and correct various specific artifacts and confounding factors for an improved accuracy, precision, and robustness in diffusion MRI analysis.  The pipeline optionally corrects for:
 
